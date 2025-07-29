@@ -1,10 +1,34 @@
 import React from 'react';
 import { Helmet } from 'react-helmet';
+import { useHistory } from 'react-router-dom';
 import Footer from './component/footer';
 import './registro.css';
 import HeaderPrivado from './component/headerPrivado';
 
 const Registro = () => {
+  const history = useHistory();
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirm-password').value;
+
+    // Validación: contraseña debe tener al menos 8 caracteres
+    if (password.length < 8) {
+      alert('La contraseña debe tener al menos 8 caracteres.');
+      return;
+    }
+
+    // Validación: contraseñas deben coincidir
+    if (password !== confirmPassword) {
+      alert('Las contraseñas no coinciden.');
+      return;
+    }
+
+    // Si pasa las validaciones, redirige a /login
+    history.push('/login');
+  };
+
   return (
     <div className="desktop-container">
       <Helmet>
@@ -17,23 +41,23 @@ const Registro = () => {
       <h1 className="desktop-text48">¡Únete solo a lo mejor!</h1>
 
       {/* Logo grande */}
-        <section className="desktop3-group5">
-          <img
-            alt="carsgetlogo"
-            src="/external/carsgetlogo11268-be6i-300h.png"
-            className="desktop3-carsgetlogo1"
-          />
-          <div className="desktop3-group1">
-            <h1 className="desktop3-logo-line1">
-              <span className="text-orange">CARS</span><span className="text-black"> GET</span>
-            </h1>
-            <h2 className="desktop3-logo-line2">FINANCIAMIENTO</h2>
-          </div>
-        </section>
+      <section className="desktop3-group5">
+        <img
+          alt="carsgetlogo"
+          src="/external/carsgetlogo11268-be6i-300h.png"
+          className="desktop3-carsgetlogo1"
+        />
+        <div className="desktop3-group1">
+          <h1 className="desktop3-logo-line1">
+            <span className="text-orange">CARS</span><span className="text-black"> GET</span>
+          </h1>
+          <h2 className="desktop3-logo-line2">FINANCIAMIENTO</h2>
+        </div>
+      </section>
 
       {/* Contact Form */}
       <section className="desktop-form-contact">
-        <form>
+        <form onSubmit={handleSubmit}>
           <div className="desktop-input-field">
             <label htmlFor="nombre">Nombre</label>
             <input

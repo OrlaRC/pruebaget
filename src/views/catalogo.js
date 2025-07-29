@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
 import { useHistory } from 'react-router-dom';
 import { Link } from 'react-router-dom';
@@ -8,11 +8,64 @@ import './catalogo.css';
 
 const Desktop1 = () => {
   const history = useHistory();
-
+  const [selectedYears, setSelectedYears] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [products, setProducts] = useState([]);
 
   const colores = ['Rojo', 'Azul', 'Blanco', 'Negro', 'Gris'];
   const años = ['2025', '2024', '2023', '2022', '2021', '2020', '2019', '2018', '2017'];
 
+  // Function to get a random year
+  const getRandomYear = () => {
+    return años[Math.floor(Math.random() * años.length)];
+  };
+
+  // Initialize products with unique brands and random years on mount
+  useEffect(() => {
+    setProducts([
+      { brand: 'Toyota', year: getRandomYear() },
+      { brand: 'Honda', year: getRandomYear() },
+      { brand: 'Ford', year: getRandomYear() },
+      { brand: 'Chevrolet', year: getRandomYear() },
+      { brand: 'Audi', year: getRandomYear() },
+      { brand: 'BMW', year: getRandomYear() },
+      { brand: 'Nissan', year: getRandomYear() },
+      { brand: 'Hyundai', year: getRandomYear() },
+    ]);
+  }, []);
+
+  // Handle checkbox change
+  const handleYearChange = (year) => {
+    if (selectedYears.includes(year)) {
+      setSelectedYears(selectedYears.filter((y) => y !== year));
+    } else {
+      setSelectedYears([...selectedYears, year]);
+    }
+  };
+
+  // Handle search input change
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+  };
+
+  // Filter products based on selected years and search query
+  const filteredProducts = products.filter((product) => {
+    const matchesYear = selectedYears.length > 0 ? selectedYears.includes(product.year) : true;
+    const matchesSearch = searchQuery
+      ? product.brand.toLowerCase().includes(searchQuery.toLowerCase())
+      : true;
+    return matchesYear && matchesSearch;
+  });
+
+  // Define individual products for rendering
+  const product1 = products[0] || { brand: 'Toyota', year: '2025' };
+  const product2 = products[1] || { brand: 'Honda', year: '2024' };
+  const product3 = products[2] || { brand: 'Ford', year: '2023' };
+  const product4 = products[3] || { brand: 'Chevrolet', year: '2022' };
+  const product5 = products[4] || { brand: 'Audi', year: '2021' };
+  const product6 = products[5] || { brand: 'BMW', year: '2020' };
+  const product7 = products[6] || { brand: 'Nissan', year: '2019' };
+  const product8 = products[7] || { brand: 'Hyundai', year: '2018' };
 
   return (
     <div className="desktop1-container">
@@ -23,7 +76,13 @@ const Desktop1 = () => {
       <Header />
 
       <div className="search-bar">
-        <span>Buscar</span>
+        <input
+          type="text"
+          placeholder="Buscar por marca"
+          value={searchQuery}
+          onChange={handleSearchChange}
+          className="search-input"
+        />
         <img src="/external/searchi113-4ayv.svg" alt="Buscar" />
       </div>
 
@@ -55,156 +114,146 @@ const Desktop1 = () => {
                 </Link>
               ))}
             </div>
-
-
           </div>
-
-          <div>
-            <h3>Color</h3>
-            <div className="colores">
-              <label className="checkbox">
-                <input type="checkbox" name="color" value="Rojo" />
-                <span>Rojo</span>
-              </label>
-              <label className="checkbox">
-                <input type="checkbox" name="color" value="Azul" />
-                <span>Azul</span>
-              </label>
-              <label className="checkbox">
-                <input type="checkbox" name="color" value="Blanco" />
-                <span>Blanco</span>
-              </label>
-              <label className="checkbox">
-                <input type="checkbox" name="color" value="Negro" />
-                <span>Negro</span>
-              </label>
-              <label className="checkbox">
-                <input type="checkbox" name="color" value="Gris" />
-                <span>Gris</span>
-              </label>
-            </div>
-          </div>
-
 
           <div>
             <h3>Año</h3>
             <div className="años">
-              <label className="checkbox">
-                <input type="checkbox" name="año" value="2025" />
-                <span>2025</span>
-              </label>
-              <label className="checkbox">
-                <input type="checkbox" name="año" value="2024" />
-                <span>2024</span>
-              </label>
-              <label className="checkbox">
-                <input type="checkbox" name="año" value="2023" />
-                <span>2023</span>
-              </label>
-              <label className="checkbox">
-                <input type="checkbox" name="año" value="2022" />
-                <span>2022</span>
-              </label>
-              <label className="checkbox">
-                <input type="checkbox" name="año" value="2021" />
-                <span>2021</span>
-              </label>
-              <label className="checkbox">
-                <input type="checkbox" name="año" value="2020" />
-                <span>2020</span>
-              </label>
-              <label className="checkbox">
-                <input type="checkbox" name="año" value="2019" />
-                <span>2019</span>
-              </label>
-              <label className="checkbox">
-                <input type="checkbox" name="año" value="2018" />
-                <span>2018</span>
-              </label>
-              <label className="checkbox">
-                <input type="checkbox" name="año" value="2017" />
-                <span>2017</span>
-              </label>
+              {años.map((year, i) => (
+                <label className="checkbox" key={i}>
+                  <input
+                    type="checkbox"
+                    name="año"
+                    value={year}
+                    checked={selectedYears.includes(year)}
+                    onChange={() => handleYearChange(year)}
+                  />
+                  <span>{year}</span>
+                </label>
+              ))}
             </div>
           </div>
-
         </aside>
 
         <section className="catalogo">
-           <div className="producto">
-            <img src="/external/auto1.png" alt="Toyota" className="auto" />
-            <span className="marca">Toyota</span>
-            <span className="precio">$15,000</span>
-            <button className="mas-info" onClick={() => history.push('/info-auto')}>
-              Más información
-            </button>
-
-          </div>
-
-
-          <div className="producto">
-            <img src="/external/auto1.png" alt="Toyota" className="auto" />
-            <span className="marca">Toyota</span>
-            <span className="precio">$15,000</span>
-            <button className="mas-info" onClick={() => navigate('/info-auto')}>
-              Más información
-            </button>
-          </div>
-
-
-          <div className="producto">
-            <img src="/external/auto1.png" alt="Toyota" className="auto" />
-            <span className="marca">Toyota</span>
-            <span className="precio">$15,000</span>
-            <button className="mas-info" onClick={() => navigate('/info-auto')}>
-              Más información
-            </button>
-          </div>
-
-          <div className="producto">
-            <img src="/external/auto1.png" alt="Toyota" className="auto" />
-            <span className="marca">Toyota</span>
-            <span className="precio">$15,000</span>
-            <button className="mas-info" onClick={() => navigate('/info-auto')}>
-              Más información
-            </button>
-          </div>
-
-          <div className="producto">
-            <img src="/external/auto1.png" alt="Toyota" className="auto" />
-            <span className="marca">Toyota</span>
-            <span className="precio">$15,000</span>
-            <button className="mas-info" onClick={() => navigate('/info-auto')}>
-              Más información
-            </button>
-          </div>
-
-          <div className="producto">
-            <img src="/external/auto1.png" alt="Toyota" className="auto" />
-            <span className="marca">Toyota</span>
-            <span className="precio">$15,000</span>
-            <button className="mas-info" onClick={() => navigate('/info-auto')}>
-              Más información
-            </button>
-          </div>
-
-          <div className="producto">
-            <img src="/external/auto1.png" alt="Toyota" className="auto" />
-            <span className="marca">Toyota</span>
-            <span className="precio">$15,000</span>
-            <button className="mas-info" onClick={() => navigate('/info-auto')}>
-              Más información
-            </button>
-          </div>
-
-          <div className="producto">
-            <img src="/external/auto1.png" alt="Toyota" className="auto" />
-            <span className="marca">Toyota</span>
-            <span className="precio">$15,000</span>
-            <button className="mas-info" onClick={() => navigate('/info-auto')}>
-              Más información
-            </button>
-          </div>
+          {filteredProducts.length > 0 ? (
+            <>
+              {filteredProducts.includes(product1) && (
+                <div className="producto">
+                  <img src="/external/auto1.png" alt={product1.brand} className="auto" />
+                  <span className="marca">{product1.brand}</span>
+                  <span className="año">{product1.year}</span>
+                  <span className="precio">$15,000</span>
+                  <button
+                    className="mas-info"
+                    onClick={() => history.push('/info-auto')}
+                  >
+                    Más información
+                  </button>
+                </div>
+              )}
+              {filteredProducts.includes(product2) && (
+                <div className="producto">
+                  <img src="/external/auto1.png" alt={product2.brand} className="auto" />
+                  <span className="marca">{product2.brand}</span>
+                  <span className="año">{product2.year}</span>
+                  <span className="precio">$15,000</span>
+                  <button
+                    className="mas-info"
+                    onClick={() => history.push('/info-auto')}
+                  >
+                    Más información
+                  </button>
+                </div>
+              )}
+              {filteredProducts.includes(product3) && (
+                <div className="producto">
+                  <img src="/external/auto1.png" alt={product3.brand} className="auto" />
+                  <span className="marca">{product3.brand}</span>
+                  <span className="año">{product3.year}</span>
+                  <span className="precio">$15,000</span>
+                  <button
+                    className="mas-info"
+                    onClick={() => history.push('/info-auto')}
+                  >
+                    Más información
+                  </button>
+                </div>
+              )}
+              {filteredProducts.includes(product4) && (
+                <div className="producto">
+                  <img src="/external/auto1.png" alt={product4.brand} className="auto" />
+                  <span className="marca">{product4.brand}</span>
+                  <span className="año">{product4.year}</span>
+                  <span className="precio">$15,000</span>
+                  <button
+                    className="mas-info"
+                    onClick={() => history.push('/info-auto')}
+                  >
+                    Más información
+                  </button>
+                </div>
+              )}
+              {filteredProducts.includes(product5) && (
+                <div className="producto">
+                  <img src="/external/auto1.png" alt={product5.brand} className="auto" />
+                  <span className="marca">{product5.brand}</span>
+                  <span className="año">{product5.year}</span>
+                  <span className="precio">$15,000</span>
+                  <button
+                    className="mas-info"
+                    onClick={() => history.push('/info-auto')}
+                  >
+                    Más información
+                  </button>
+                </div>
+              )}
+              {filteredProducts.includes(product6) && (
+                <div className="producto">
+                  <img src="/external/auto1.png" alt={product6.brand} className="auto" />
+                  <span className="marca">{product6.brand}</span>
+                  <span className="año">{product6.year}</span>
+                  <span className="precio">$15,000</span>
+                  <button
+                    className="mas-info"
+                    onClick={() => history.push('/info-auto')}
+                  >
+                    Más información
+                  </button>
+                </div>
+              )}
+              {filteredProducts.includes(product7) && (
+                <div className="producto">
+                  <img src="/external/auto1.png" alt={product7.brand} className="auto" />
+                  <span className="marca">{product7.brand}</span>
+                  <span className="año">{product7.year}</span>
+                  <span className="precio">$15,000</span>
+                  <button
+                    className="mas-info"
+                    onClick={() => history.push('/info-auto')}
+                  >
+                    Más información
+                  </button>
+                </div>
+              )}
+              {filteredProducts.includes(product8) && (
+                <div className="producto">
+                  <img src="/external/auto1.png" alt={product8.brand} className="auto" />
+                  <span className="marca">{product8.brand}</span>
+                  <span className="año">{product8.year}</span>
+                  <span className="precio">$15,000</span>
+                  <button
+                    className="mas-info"
+                    onClick={() => history.push('/info-auto')}
+                  >
+                    Más información
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <p>No hay autos disponibles para los filtros seleccionados.</p>
+          )}
         </section>
       </div>
 

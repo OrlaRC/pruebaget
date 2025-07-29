@@ -146,8 +146,18 @@ img {
 .catalogo {
   flex: 3;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 240px));
   gap: 24px;
+  justify-content: center;
+  align-items: start;
+}
+
+.catalogo p {
+  font-size: 16px;
+  color: #555;
+  text-align: center;
+  margin-top: 20px;
+  grid-column: 1 / -1;
 }
 
 .producto {
@@ -161,6 +171,9 @@ img {
   box-shadow: 0 2px 6px rgba(0,0,0,0.1);
   transition: transform 0.2s ease;
   margin-bottom: 2rem;
+  width: 240px;
+  max-height: 400px; /* Altura máxima para evitar que se alargue demasiado */
+  overflow: hidden; /* Oculta contenido que exceda la altura máxima */
 }
 
 .producto:hover {
@@ -175,9 +188,15 @@ img {
 }
 
 .producto .marca,
-.producto .precio {
+.producto .precio,
+.producto .año {
   font-size: 16px;
   margin-top: 8px;
+}
+
+.producto .año {
+  font-size: 14px;
+  color: #555;
 }
 
 .producto .precio {
@@ -216,12 +235,17 @@ img {
   margin-bottom: 16px;
 }
 
-
-.search-bar span {
-  color: #B3B3B3;
+.search-bar input {
   flex-grow: 1;
+  border: none;
+  outline: none;
+  font-size: 16px;
+  color: #1E1E1E;
 }
 
+.search-bar input::placeholder {
+  color: #B3B3B3;
+}
 
 /* ========== RESPONSIVE ========== */
 @media (max-width: 1024px) {
@@ -229,7 +253,8 @@ img {
     flex-direction: column;
   }
   .catalogo {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(240px, 240px));
+    justify-content: center;
   }
   .search-bar {
     margin-top: 0;
@@ -239,8 +264,9 @@ img {
 @media (max-width: 600px) {
   .catalogo {
     grid-template-columns: 1fr;
+    justify-content: center;
   }
-  .desktop1-header2 {
+  .desktop3-header2 {
     flex-direction: column;
     gap: 12px;
     text-align: center;
