@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet';
 import { useHistory, useLocation } from 'react-router-dom';
 import HeaderPrivado from './component/headerPrivado';
@@ -8,6 +8,7 @@ import './info_auto.css';
 const InfoAuto = () => {
   const history = useHistory();
   const { state } = useLocation();
+  const titleRef = useRef(null); // Referencia para el título del vehículo
 
   const [vehiculo, setVehiculo] = useState(null);
   const [brandName, setBrandName] = useState('');
@@ -15,19 +16,28 @@ const InfoAuto = () => {
   const [thumbnails, setThumbnails] = useState([]);
   const [otrosVehiculos, setOtrosVehiculos] = useState([]);
 
+  // Obtener ID desde state o localStorage
   const idFromState = state?.idVehiculo;
   const storedId = localStorage.getItem('idVehiculo');
   const idVehiculo = idFromState || storedId;
 
+  // Guardar idVehiculo en localStorage cuando cambie
   useEffect(() => {
-    if (idFromState) localStorage.setItem('idVehiculo', idFromState);
+    if (idFromState) {
+      localStorage.setItem('idVehiculo', idFromState);
+    }
   }, [idFromState]);
 
+  // Fetch del vehículo seleccionado
   useEffect(() => {
     if (!idVehiculo) return;
-    fetch(`http://localhost:3000/api/catalogo/${idVehiculo}`)
-      .then(res => res.json())
-      .then(data => {
+
+    console.log('Fetching vehicle with ID:', idVehiculo);
+
+    const fetchVehiculo = async () => {
+      try {
+        const res = await fetch(`http://localhost:3000/api/catalogo/${idVehiculo}`);
+        const data = await res.json();
         if (data.success) {
           const v = data.data;
           setVehiculo(v);
@@ -39,32 +49,58 @@ const InfoAuto = () => {
           }
 
           if (v.idMarca) {
-            fetch(`http://localhost:3000/api/marcas/${v.idMarca}`)
-              .then(r => r.json())
-              .then(bd => setBrandName(bd.data?.nombre_marca || ''))
-              .catch(() => setBrandName(''));
+            const r = await fetch(`http://localhost:3000/api/marcas/${v.idMarca}`);
+            const bd = await r.json();
+            setBrandName(bd.data?.nombre_marca || '');
           }
+        } else {
+          console.error('No vehicle data found for ID:', idVehiculo);
+          setVehiculo(null);
         }
-      })
-      .catch(err => console.error(err));
+      } catch (err) {
+        console.error('Error fetching vehicle:', err);
+        setVehiculo(null);
+      }
+    };
+
+    fetchVehiculo();
   }, [idVehiculo]);
 
+  // Fetch de otros vehículos
   useEffect(() => {
-    fetch('http://localhost:3000/api/catalogo')
-      .then(res => res.json())
-      .then(data => {
+    const fetchOtrosVehiculos = async () => {
+      try {
+        const res = await fetch('http://localhost:3000/api/catalogo');
+        const data = await res.json();
         if (data.success) {
           const otros = data.data
             .filter(v => v.idVehiculo !== idVehiculo)
             .slice(0, 5);
           setOtrosVehiculos(otros);
         }
-      })
-      .catch(err => console.error(err));
+      } catch (err) {
+        console.error('Error fetching other vehicles:', err);
+      }
+    };
+
+    fetchOtrosVehiculos();
   }, [idVehiculo]);
 
   if (!idVehiculo) return <div>No se ha especificado el vehículo.</div>;
-  if (!vehiculo) return <div>Cargando información del vehículo...</div>;
+  if (!vehiculo) return (
+    <div style={{ 
+      textAlign: 'center', 
+      padding: '2rem', 
+      position: 'fixed', 
+      top: 0, 
+      width: '100%', 
+      background: 'rgba(0, 0, 0, 0.7)', 
+      color: 'white',
+      zIndex: 1000 
+    }}>
+      Cargando información del vehículo...
+    </div>
+  );
 
   const handleThumbnailClick = idx => {
     const clicked = thumbnails[idx];
@@ -72,6 +108,21 @@ const InfoAuto = () => {
     newThumbs[idx] = mainImage;
     setMainImage(clicked);
     setThumbnails(newThumbs);
+  };
+
+  const handleVehicleClick = (id) => {
+    console.log('Initiating mandatory smooth scroll to title for vehicle ID:', id);
+    history.push('/info-auto', { idVehiculo: id });
+    // Desplazamiento suave al título del vehículo
+    setTimeout(() => {
+      if (titleRef.current) {
+        titleRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        console.log('Scroll to title executed');
+      } else {
+        console.warn('Title ref not found, falling back to top');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, 100); // Retraso para asegurar que la ruta se actualice
   };
 
   const caracteristicasList = vehiculo.caracteristicas
@@ -87,11 +138,12 @@ const InfoAuto = () => {
       <HeaderPrivado />
 
       <main className="desktop2-main">
-        <div className="titulo-busqueda">
+        <div className="titulo-busqueda" ref={titleRef}>
           <h1>{vehiculo.modelo} {vehiculo.version}</h1>
         </div>
 
         <div className="detalle-principal">
+          {/* Galería principal */}
           <section className="galeria-principal">
             <div className="imagen-principal">
               <img src="/external/rectangle34750521211-zpe8-1000h.png" alt="Fondo del vehículo" />
@@ -110,6 +162,7 @@ const InfoAuto = () => {
             </div>
           </section>
 
+          {/* Información del vehículo */}
           <section className="info-vehiculo descripcion-ancha">
             <h2>Descripción</h2>
             <ul>
@@ -144,6 +197,7 @@ const InfoAuto = () => {
           </section>
         </div>
 
+        {/* Otros vehículos */}
         <section className="otros-vehiculos" style={{ textAlign: 'center' }}>
           <h2>OTROS VEHÍCULOS</h2>
           <div className="galeria-otros" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center', marginTop: '1rem' }}>
@@ -164,12 +218,11 @@ const InfoAuto = () => {
                 </span>
                 <button
                   className="mas-info"
-                  onClick={() => history.push('/info-auto', { idVehiculo: auto.idVehiculo })}
+                  onClick={() => handleVehicleClick(auto.idVehiculo)}
                   style={{ cursor: 'pointer' }}
                 >
                   Más información
                 </button>
-
               </div>
             ))}
           </div>
