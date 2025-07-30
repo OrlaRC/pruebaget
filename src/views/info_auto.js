@@ -54,7 +54,9 @@ const InfoAuto = () => {
       .then(res => res.json())
       .then(data => {
         if (data.success) {
-          const otros = data.data.filter(v => v.idVehiculo !== idVehiculo).slice(0, 5);
+          const otros = data.data
+            .filter(v => v.idVehiculo !== idVehiculo)
+            .slice(0, 5);
           setOtrosVehiculos(otros);
         }
       })
@@ -144,39 +146,14 @@ const InfoAuto = () => {
 
         <section className="otros-vehiculos" style={{ textAlign: 'center' }}>
           <h2>OTROS VEHÍCULOS</h2>
-          <div
-            className="galeria-otros"
-            style={{
-              display: 'flex',
-              gap: '1rem',
-              flexWrap: 'wrap',
-              justifyContent: 'center',
-              marginTop: '1rem',
-            }}
-          >
+          <div className="galeria-otros" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center', marginTop: '1rem' }}>
             {otrosVehiculos.map(auto => (
-              <div
-                key={auto.idVehiculo}
-                className="producto"
-                style={{
-                  width: '180px',
-                  border: '1px solid #ccc',
-                  borderRadius: '8px',
-                  padding: '1rem',
-                  boxSizing: 'border-box',
-                  textAlign: 'center',
-                }}
-              >
+              <div key={auto.idVehiculo} className="producto" style={{ width: '180px', border: '1px solid #ccc', borderRadius: '8px', padding: '1rem', boxSizing: 'border-box', textAlign: 'center' }}>
                 {auto.imagenes && auto.imagenes[0] && (
                   <img
                     src={auto.imagenes[0]}
                     alt={auto.modelo}
-                    style={{
-                      width: '100%',
-                      height: 'auto',
-                      marginBottom: '0.5rem',
-                      borderRadius: '4px',
-                    }}
+                    style={{ width: '100%', height: 'auto', marginBottom: '0.5rem', borderRadius: '4px' }}
                   />
                 )}
                 <span className="marca" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
@@ -187,9 +164,7 @@ const InfoAuto = () => {
                 </span>
                 <button
                   className="mas-info"
-                  onClick={() => {
-                    window.location.href = `/info-auto?idVehiculo=${auto.idVehiculo}`;
-                  }}
+                  onClick={() => history.push('/info-auto', { idVehiculo: auto.idVehiculo })}
                   style={{ cursor: 'pointer' }}
                 >
                   Más información
