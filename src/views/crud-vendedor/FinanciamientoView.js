@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { 
-  FileText, UserCheck, Shield, DollarSign, Percent, 
+import {
+  FileText, UserCheck, Shield, DollarSign, Percent,
   Clock, Users, Heart, Car, CheckCircle, Calculator,
   History, ChevronDown, ChevronUp, Copy, Trash2,
   Search, ArrowRight, Calendar, CreditCard, Image, ImagePlus,
   Info, AlertCircle, Download, Share2, Filter, SortAsc
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import LayoutVendedor from '../layout/LayoutVendedor';
 import { NotificationContext } from '../../context/NotificationContext';
 import './FinanciamientoView.css';
@@ -19,7 +19,7 @@ const vehiculosDisponibles = [
     marca: 'Toyota',
     modelo: 'Corolla',
     año: 2020,
-    precio: 250000,
+    precio: 189000,
     imagen: 'https://via.placeholder.com/600x400?text=Toyota+Corolla+2020',
     imagenesAlternativas: [
       'https://via.placeholder.com/600x400?text=Toyota+Corolla+Front',
@@ -30,6 +30,28 @@ const vehiculosDisponibles = [
     combustible: 'Gasolina',
     transmision: 'Automático'
   },
+  {
+    id: 2,
+    marca: 'Honda',
+    modelo: 'Civic',
+    año: 2021,
+    precio: 280000,
+    imagen: 'https://via.placeholder.com/600x400?text=Honda+Civic+2021',
+    categoria: 'Sedán',
+    combustible: 'Gasolina',
+    transmision: 'Automático'
+  },
+  {
+    id: 3,
+    marca: 'Nissan',
+    modelo: 'Sentra',
+    año: 2019,
+    precio: 220000,
+    imagen: 'https://via.placeholder.com/600x400?text=Nissan+Sentra+2019',
+    categoria: 'Sedán',
+    combustible: 'Gasolina',
+    transmision: 'Automático'
+  }
 ];
 
 const FinanciamientoView = () => {
@@ -37,13 +59,13 @@ const FinanciamientoView = () => {
 
   const [cotizacion, setCotizacion] = useState({
     vehiculo: null,
-    enganche: '',
-    plazo: 60,
-    mensualidad: '',
-    comision: '',
+    enganche: 20000,
+    plazo: 12,
+    mensualidad: 0,
+    comision: 0,
     mensualidadesDisponibles: [],
     imagenIndex: 0,
-    tasaInteres: 12.5
+    tasaInteres: 7.2
   });
 
   const [historial, setHistorial] = useState([]);
@@ -81,38 +103,26 @@ const FinanciamientoView = () => {
   const categorias = [...new Set(vehiculosDisponibles.map(v => v.categoria))];
 
   const seleccionarVehiculo = (vehiculo) => {
-    let enganche = Math.round(vehiculo.precio * 0.10);
-    
-    if (vehiculo.precio < 200000 && enganche < 20000) {
-      enganche = 20000;
-    }
-    
-    const tasaInteres = cotizacion.tasaInteres;
-    
-    const mensualidadesDisponibles = [12, 24, 36, 48, 60].map(plazo => {
-      const capital = vehiculo.precio - enganche;
-      const tasaMensual = (tasaInteres / 100) / 12;
-      const mensualidad = capital * (tasaMensual * Math.pow(1 + tasaMensual, plazo)) / 
-                         (Math.pow(1 + tasaMensual, plazo) - 1);
-      
-      return {
-        plazo,
-        mensualidad: Math.round(mensualidad),
-        totalIntereses: Math.round((mensualidad * plazo) - capital)
-      };
-    });
+    let enganche = 20000;
+    const precio = vehiculo.precio;
+    const tasaMensual = cotizacion.tasaInteres / 100 / 12;
+    const montoFinanciado = precio - enganche;
 
-    const comision = Math.round(vehiculo.precio * 0.05);
-    
+    const mensualidad = Math.round(
+      (tasaMensual * montoFinanciado) / (1 - Math.pow(1 + tasaMensual, -cotizacion.plazo))
+    );
+
+    const comision = Math.round(precio * 0.05);
+
     setCotizacion({
       vehiculo,
       enganche,
-      plazo: 60,
-      mensualidad: mensualidadesDisponibles.find(m => m.plazo === 60)?.mensualidad || 0,
+      plazo: cotizacion.plazo,
+      mensualidad,
       comision,
-      mensualidadesDisponibles,
+      mensualidadesDisponibles: [{ plazo: 12, mensualidad, totalIntereses: Math.round(mensualidad * 12 - montoFinanciado) }],
       imagenIndex: 0,
-      tasaInteres
+      tasaInteres: cotizacion.tasaInteres
     });
 
     showNotification('Vehículo seleccionado correctamente', 'success');
@@ -139,52 +149,40 @@ const FinanciamientoView = () => {
 
     const enganche = parseFloat(e.target.value) || 0;
     const precio = cotizacion.vehiculo?.precio || 0;
-    
+
     let engancheFinal = enganche;
-    const engancheMinimo = precio < 200000 ? 20000 : precio * 0.10;
-    
+    const engancheMinimo = 20000;
+    const engancheMaximo = precio * 0.5;
+
     if (enganche < engancheMinimo) {
-      engancheFinal = Math.round(engancheMinimo);
+      engancheFinal = engancheMinimo;
       showNotification(`El enganche mínimo es ${formatPrice(engancheMinimo)}`, 'warning');
+    } else if (enganche > engancheMaximo) {
+      engancheFinal = engancheMaximo;
+      showNotification(`El enganche máximo es ${formatPrice(engancheMaximo)}`, 'warning');
     }
-    
-    if (enganche > precio * 0.5) {
-      engancheFinal = Math.round(precio * 0.5);
-      showNotification(`El enganche máximo es ${formatPrice(precio * 0.5)}`, 'warning');
-    }
-    
-    const tasaInteres = cotizacion.tasaInteres;
-    const mensualidadesDisponibles = [12, 24, 36, 48, 60].map(plazo => {
-      const capital = precio - engancheFinal;
-      const tasaMensual = (tasaInteres / 100) / 12;
-      const mensualidad = capital * (tasaMensual * Math.pow(1 + tasaMensual, plazo)) / 
-                         (Math.pow(1 + tasaMensual, plazo) - 1);
-      
-      return {
-        plazo,
-        mensualidad: Math.round(mensualidad),
-        totalIntereses: Math.round((mensualidad * plazo) - capital)
-      };
-    });
-    
+
+    const tasaMensual = cotizacion.tasaInteres / 100 / 12;
+    const montoFinanciado = precio - engancheFinal;
+    const mensualidad = Math.round(
+      (tasaMensual * montoFinanciado) / (1 - Math.pow(1 + tasaMensual, -cotizacion.plazo))
+    );
+
     setCotizacion(prev => ({
       ...prev,
       enganche: engancheFinal,
-      mensualidadesDisponibles,
-      mensualidad: mensualidadesDisponibles.find(m => m.plazo === prev.plazo)?.mensualidad || 0
+      mensualidadesDisponibles: [{
+        plazo: prev.plazo,
+        mensualidad,
+        totalIntereses: Math.round(mensualidad * prev.plazo - montoFinanciado)
+      }],
+      mensualidad
     }));
   };
 
   const handleTasaInteresChange = (e) => {
-    const nuevaTasa = parseFloat(e.target.value) || 0;
-    setCotizacion(prev => ({
-      ...prev,
-      tasaInteres: nuevaTasa
-    }));
-    
-    if (cotizacion.vehiculo) {
-      seleccionarVehiculo(cotizacion.vehiculo);
-    }
+    // This function is no longer needed since the input is disabled
+    // Keeping it as a no-op to avoid breaking existing references
   };
 
   const seleccionarMensualidad = (plazo, mensualidad) => {
@@ -197,7 +195,7 @@ const FinanciamientoView = () => {
 
   const cambiarImagen = () => {
     if (!cotizacion.vehiculo || !cotizacion.vehiculo.imagenesAlternativas) return;
-    
+
     const nextIndex = (cotizacion.imagenIndex + 1) % cotizacion.vehiculo.imagenesAlternativas.length;
     setCotizacion(prev => ({
       ...prev,
@@ -229,28 +227,35 @@ const FinanciamientoView = () => {
       showNotification('No hay cotización para exportar', 'error');
       return;
     }
-    
+
     setGeneratingPDF(true);
-    
+
     try {
       const doc = new jsPDF();
-      const date = new Date().toLocaleDateString();
-      
+      let startY = 20;
+
+      // Configuración del documento
       doc.setFontSize(18);
       doc.setTextColor(40, 40, 40);
-      doc.text("Cotización de Financiamiento", 14, 20);
-      
+      doc.text("Cotización de Financiamiento", 14, startY);
+      startY += 10;
+
+      const date = new Date().toLocaleDateString();
       doc.setFontSize(12);
       doc.setTextColor(100, 100, 100);
-      doc.text(`Generado el: ${date}`, 14, 30);
-      doc.text(`Vehículo: ${getNombreVehiculo(cotizacion.vehiculo)}`, 14, 40);
+      doc.text(`Generado el: ${date}`, 14, startY);
+      startY += 10;
+      doc.text(`Vehículo: ${getNombreVehiculo(cotizacion.vehiculo)}`, 14, startY);
+      startY += 15;
 
+      // Detalles del vehículo
       doc.setFontSize(14);
       doc.setTextColor(40, 40, 40);
-      doc.text('Detalles del Vehículo', 14, 55);
-      
-      doc.autoTable({
-        startY: 60,
+      doc.text('Detalles del Vehículo', 14, startY);
+      startY += 10;
+
+      autoTable(doc, {
+        startY: startY,
         head: [['Marca', 'Modelo', 'Año', 'Precio']],
         body: [[
           cotizacion.vehiculo.marca,
@@ -265,21 +270,25 @@ const FinanciamientoView = () => {
           fontStyle: 'bold'
         }
       });
-      
+      startY = doc.lastAutoTable.finalY + 10;
+
+      // Detalles de financiamiento
       doc.setFontSize(14);
-      doc.text('Detalles de Financiamiento', 14, doc.lastAutoTable.finalY + 15);
-      
-      doc.autoTable({
-        startY: doc.lastAutoTable.finalY + 20,
+      doc.text('Detalles de Financiamiento', 14, startY);
+      startY += 10;
+
+      autoTable(doc, {
+        startY: startY,
         head: [['Concepto', 'Valor']],
         body: [
           ['Enganche', formatPrice(cotizacion.enganche)],
+          ['Monto a financiar', formatPrice(cotizacion.vehiculo.precio - cotizacion.enganche)],
           ['Plazo', `${cotizacion.plazo} meses`],
           ['Tasa de interés', `${cotizacion.tasaInteres}% anual`],
           ['Mensualidad', formatPrice(cotizacion.mensualidad)],
           ['Comisión', formatPrice(cotizacion.comision)],
           ['Total a pagar', formatPrice(cotizacion.enganche + (cotizacion.mensualidad * cotizacion.plazo))],
-          ['Intereses totales', formatPrice(calcularAhorro())]
+          ['Intereses totales', formatPrice(cotizacion.mensualidad * cotizacion.plazo - (cotizacion.vehiculo.precio - cotizacion.enganche))]
         ],
         theme: 'grid',
         headStyles: {
@@ -288,12 +297,33 @@ const FinanciamientoView = () => {
           fontStyle: 'bold'
         }
       });
-      
+      startY = doc.lastAutoTable.finalY + 10;
+
+      // Beneficios incluidos
+      doc.setFontSize(14);
+      doc.text('Beneficios Incluidos', 14, startY);
+      startY += 10;
+
+      doc.setFontSize(10);
+      doc.text('• Garantía mecánica', 14, startY);
+      startY += 5;
+      doc.text('• Trámite de placas', 14, startY);
+      startY += 5;
+      doc.text('• Seguro de vida', 14, startY);
+      startY += 5;
+      doc.text('• Seguro vehicular (sujeto a promoción)', 14, startY);
+      startY += 5;
+      doc.text('• GPS inmovilizador', 14, startY);
+      startY += 10;
+
+      // Notas al pie
       doc.setFontSize(10);
       doc.setTextColor(100, 100, 100);
-      doc.text('* Esta cotización es válida por 15 días a partir de la fecha de emisión.', 14, doc.lastAutoTable.finalY + 10);
-      doc.text('* Los términos y condiciones están sujetos a aprobación de crédito.', 14, doc.lastAutoTable.finalY + 15);
-      
+      doc.text('* Esta cotización es válida por 15 días a partir de la fecha de emisión.', 14, startY);
+      startY += 5;
+      doc.text('* Los términos y condiciones están sujetos a aprobación de crédito.', 14, startY);
+
+      // Guardar el PDF
       doc.save(`cotizacion_${getNombreVehiculo(cotizacion.vehiculo).replace(/\s+/g, '_')}.pdf`);
       showNotification('Cotización exportada como PDF', 'success');
     } catch (error) {
@@ -309,12 +339,14 @@ const FinanciamientoView = () => {
       showNotification('No hay cotización para compartir', 'error');
       return;
     }
-    
+
     const texto = `Cotización de ${getNombreVehiculo(cotizacion.vehiculo)}:
 Precio: ${formatPrice(cotizacion.vehiculo.precio)}
 Enganche: ${formatPrice(cotizacion.enganche)}
+Monto a financiar: ${formatPrice(cotizacion.vehiculo.precio - cotizacion.enganche)}
 Mensualidad: ${formatPrice(cotizacion.mensualidad)} (${cotizacion.plazo} meses)
-Tasa de interés: ${cotizacion.tasaInteres}%`;
+Tasa de interés: ${cotizacion.tasaInteres}%
+Beneficios: Garantía mecánica, trámite de placas, seguro de vida, seguro vehicular (sujeto a promoción), GPS inmovilizador`;
 
     if (navigator.share) {
       navigator.share({
@@ -361,379 +393,235 @@ Tasa de interés: ${cotizacion.tasaInteres}%`;
 
   return (
     <LayoutVendedor>
-      <div> {/* Contenedor aislado */}
-        <div className="fin-min-h-screen fin-bg-gradient-to-br from-blue-50 to-indigo-100 fin-p-4">
-          <div className="fin-max-w-7xl fin-mx-auto">
-            {/* Header */}
-            <div className="fin-bg-white fin-rounded-xl fin-shadow-lg fin-p-6 fin-mb-6">
-              <div className="fin-flex fin-items-center fin-justify-between">
-                <div className="fin-flex fin-items-center fin-space-x-3">
-                  <div className="fin-bg-blue-500 fin-p-3 fin-rounded-full">
-                    <Calculator className="fin-w-6 fin-h-6 fin-text-white" />
-                  </div>
-                  <div>
-                    <h1 className="fin-text-2xl fin-font-bold fin-text-gray-800">Calculadora de Financiamiento</h1>
-                    <p className="fin-text-gray-600">Encuentra la mejor opción para tu vehículo</p>
-                  </div>
+      <div className="fin-min-h-screen fin-bg-gradient-to-br from-blue-50 to-indigo-100 fin-p-4">
+        <div className="fin-max-w-7xl fin-mx-auto">
+          {/* Header */}
+          <div className="fin-bg-white fin-rounded-xl fin-shadow-lg fin-p-6 fin-mb-6">
+            <div className="fin-flex fin-items-center fin-justify-between">
+              <div className="fin-flex fin-items-center fin-space-x-3">
+                <div className="fin-bg-blue-500 fin-p-3 fin-rounded-full">
+                  <Calculator className="fin-w-6 fin-h-6 fin-text-white" />
                 </div>
-                <div className="fin-flex fin-space-x-2">
-                  <button 
-                    className="fin-px-4 fin-py-2 fin-rounded-lg fin-font-medium fin-transition-colors fin-bg-blue-500 fin-text-white"
-                    onClick={() => setCotizacion(prev => ({...prev, vehiculo: null}))}
+                <div>
+                  <h1 className="fin-text-2xl fin-font-bold fin-text-gray-800">Calculadora de Financiamiento</h1>
+                  <p className="fin-text-gray-600">Encuentra la mejor opción para tu vehículo</p>
+                </div>
+              </div>
+              <div className="fin-flex fin-space-x-2">
+                <button
+                  className="fin-px-4 fin-py-2 fin-rounded-lg fin-font-medium fin-transition-colors fin-bg-blue-500 fin-text-white"
+                  onClick={() => setCotizacion(prev => ({...prev, vehiculo: null, enganche: 20000, mensualidad: 0, comision: 0}))}
+                >
+                  <Calculator className="fin-w-4 fin-h-4 fin-inline fin-mr-2" />
+                  Nueva Cotización
+                </button>
+                <button
+                  className="fin-px-4 fin-py-2 fin-rounded-lg fin-font-medium fin-transition-colors fin-bg-green-500 fin-text-white"
+                  onClick={exportarCotizacion}
+                  disabled={generatingPDF || !cotizacion.vehiculo}
+                >
+                  <Download className="fin-w-4 fin-h-4 fin-inline fin-mr-2" />
+                  {generatingPDF ? 'Generando...' : 'Descargar PDF'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Main Content */}
+          <div className="fin-grid fin-grid-cols-1 lg:fin-grid-cols-3 fin-gap-6">
+            {/* Vehicle Selection */}
+            <div className="fin-bg-white fin-rounded-xl fin-shadow-lg fin-p-6">
+              <h2 className="fin-text-xl fin-font-semibold fin-mb-4">Seleccionar Vehículo</h2>
+              <div className="fin-flex fin-mb-4 fin-space-x-2">
+                <div className="fin-relative fin-flex-1">
+                  <Search className="fin-absolute fin-left-3 fin-top-2.5 fin-w-5 fin-h-5 fin-text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Buscar vehículo..."
+                    className="fin-w-full fin-pl-10 fin-pr-4 fin-py-2 fin-rounded-lg fin-border fin-border-gray-300 fin-focus:outline-none fin-focus:ring-2 fin-focus:ring-blue-500"
+                    value={busqueda}
+                    onChange={(e) => setBusqueda(e.target.value)}
+                  />
+                </div>
+                <select
+                  className="fin-px-4 fin-py-2 fin-rounded-lg fin-border fin-border-gray-300 fin-focus:outline-none fin-focus:ring-2 fin-focus:ring-blue-500"
+                  value={filtroCategoria}
+                  onChange={(e) => setFiltroCategoria(e.target.value)}
+                >
+                  <option value="">Todas las categorías</option>
+                  {categorias.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+                <select
+                  className="fin-px-4 fin-py-2 fin-rounded-lg fin-border fin-border-gray-300 fin-focus:outline-none fin-focus:ring-2 fin-focus:ring-blue-500"
+                  value={ordenamiento}
+                  onChange={(e) => setOrdenamiento(e.target.value)}
+                >
+                  <option value="precio">Ordenar por precio</option>
+                  <option value="año">Ordenar por año</option>
+                  <option value="marca">Ordenar por marca</option>
+                </select>
+              </div>
+              <div className="fin-grid fin-grid-cols-1 sm:fin-grid-cols-2 fin-gap-4 fin-max-h-96 fin-overflow-y-auto">
+                {vehiculosFiltrados.map(vehiculo => (
+                  <div
+                    key={vehiculo.id}
+                    className={`fin-p-4 fin-rounded-lg fin-border fin-cursor-pointer fin-transition-all ${
+                      cotizacion.vehiculo?.id === vehiculo.id
+                        ? 'fin-bg-blue-50 fin-border-blue-500'
+                        : 'fin-bg-white fin-border-gray-200 hover:fin-bg-gray-50'
+                    }`}
+                    onClick={() => seleccionarVehiculo(vehiculo)}
                   >
-                    <Calculator className="fin-w-4 fin-h-4 fin-inline fin-mr-2" />
-                    Nueva Cotización
-                  </button>
-                </div>
+                    <img src={vehiculo.imagen} alt={getNombreVehiculo(vehiculo)} className="fin-w-full fin-h-32 fin-object-cover fin-rounded-lg fin-mb-2" />
+                    <h3 className="fin-font-semibold">{getNombreVehiculo(vehiculo)}</h3>
+                    <p className="fin-text-gray-600">{formatPrice(vehiculo.precio)}</p>
+                    <p className="fin-text-sm fin-text-gray-500">{vehiculo.categoria} • {vehiculo.combustible}</p>
+                  </div>
+                ))}
               </div>
             </div>
 
-            {!cotizacion.vehiculo ? (
-              <div className="fin-bg-white fin-rounded-xl fin-shadow-lg fin-p-6 fin-mb-6">
-                {/* Filtros y búsqueda */}
-                <div className="fin-mb-6 fin-space-y-4">
-                  <div className="fin-flex fin-flex-wrap fin-gap-4 fin-items-center">
-                    <div className="fin-flex-1 fin-min-w-64">
-                      <div className="fin-relative">
-                        <Search className="fin-absolute fin-left-3 fin-top-3 fin-w-4 fin-h-4 fin-text-gray-400" />
-                        <input
-                          type="text"
-                          placeholder="Buscar por marca o modelo..."
-                          className="fin-w-full fin-pl-10 fin-pr-4 fin-py-2 fin-border fin-border-gray-300 fin-rounded-lg fin-focus:ring-2 fin-focus:ring-blue-500 fin-focus:border-transparent"
-                          value={busqueda}
-                          onChange={(e) => setBusqueda(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    <select
-                      className="fin-px-4 fin-py-2 fin-border fin-border-gray-300 fin-rounded-lg fin-focus:ring-2 fin-focus:ring-blue-500 fin-focus:border-transparent"
-                      value={filtroCategoria}
-                      onChange={(e) => setFiltroCategoria(e.target.value)}
-                    >
-                      <option value="">Todas las categorías</option>
-                      {categorias.map(categoria => (
-                        <option key={categoria} value={categoria}>{categoria}</option>
-                      ))}
-                    </select>
-                    <select
-                      className="fin-px-4 fin-py-2 fin-border fin-border-gray-300 fin-rounded-lg fin-focus:ring-2 fin-focus:ring-blue-500 fin-focus:border-transparent"
-                      value={ordenamiento}
-                      onChange={(e) => setOrdenamiento(e.target.value)}
-                    >
-                      <option value="precio">Ordenar por precio</option>
-                      <option value="año">Ordenar por año</option>
-                      <option value="marca">Ordenar por marca</option>
-                    </select>
+            {/* Financing Details */}
+            <div className="fin-bg-white fin-rounded-xl fin-shadow-lg fin-p-6 lg:fin-col-span-2">
+              <h2 className="fin-text-xl fin-font-semibold fin-mb-4">Detalles de Financiamiento</h2>
+              {cotizacion.vehiculo ? (
+                <div className="fin-grid fin-grid-cols-1 md:fin-grid-cols-2 fin-gap-6">
+                  <div>
+                    <img
+                      src={getImagenActual()}
+                      alt={getNombreVehiculo(cotizacion.vehiculo)}
+                      className="fin-w-full fin-h-64 fin-object-cover fin-rounded-lg fin-mb-4"
+                    />
+                    {cotizacion.vehiculo.imagenesAlternativas && (
+                      <button
+                        className="fin-px-4 fin-py-2 fin-bg-gray-200 fin-rounded-lg fin-text-sm fin-font-medium fin-w-full"
+                        onClick={cambiarImagen}
+                      >
+                        <ImagePlus className="fin-w-4 fin-h-4 fin-inline fin-mr-2" />
+                        Cambiar imagen
+                      </button>
+                    )}
                   </div>
-                </div>
-
-                {/* Grid de vehículos */}
-                <div className="fin-grid fin-grid-cols-1 fin-md:grid-cols-2 fin-lg:grid-cols-3 fin-gap-6">
-                  {vehiculosFiltrados.map(vehiculo => (
-                    <div 
-                      key={vehiculo.id} 
-                      className="fin-bg-white fin-border fin-border-gray-200 fin-rounded-xl fin-overflow-hidden fin-cursor-pointer group fin-group-hover:shadow-lg"
-                      onClick={(e) => { e.stopPropagation(); seleccionarVehiculo(vehiculo); }}
-                    >
-                      <div className="fin-aspect-w-16 fin-aspect-h-9 fin-overflow-hidden">
-                        <img 
-                          src={vehiculo.imagen} 
-                          alt={getNombreVehiculo(vehiculo)}
-                          className="fin-w-full fin-h-48 fin-object-cover fin-group-hover:scale-105 fin-transition-transform fin-duration-300"
-                        />
-                      </div>
-                      <div className="fin-p-4">
-                        <h3 className="fin-font-semibold fin-text-lg fin-text-gray-800 fin-mb-2">
-                          {getNombreVehiculo(vehiculo)}
-                        </h3>
-                        <div className="fin-space-y-2 fin-text-sm fin-text-gray-600 fin-mb-3">
-                          <div className="fin-flex fin-justify-between">
-                            <span>Categoría:</span>
-                            <span className="fin-font-medium">{vehiculo.categoria}</span>
-                          </div>
-                          <div className="fin-flex fin-justify-between">
-                            <span>Transmisión:</span>
-                            <span className="fin-font-medium">{vehiculo.transmision}</span>
-                          </div>
-                        </div>
-                        <div className="fin-flex fin-justify-between fin-items-center">
-                          <div className="fin-text-2xl fin-font-bold fin-text-blue-600">
-                            {formatPrice(vehiculo.precio)}
-                          </div>
-                          <div className="fin-text-sm fin-text-gray-500">
-                            Desde {formatPrice(vehiculo.precio < 200000 ? 20000 : Math.round(vehiculo.precio * 0.10))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="fin-grid fin-grid-cols-1 fin-lg:grid-cols-3 fin-gap-6 fin-mb-6">
-                {/* Vehículo seleccionado */}
-                <div className="fin-bg-white fin-rounded-xl fin-shadow-lg fin-p-6">
-                  <h3 className="fin-text-lg fin-font-semibold fin-mb-4 fin-flex fin-items-center">
-                    <Car className="fin-w-5 fin-h-5 fin-mr-2 fin-text-blue-500" />
-                    Vehículo Seleccionado
-                  </h3>
-                  <div className="fin-space-y-4">
-                    <div className="fin-relative">
-                      <img 
-                        src={getImagenActual()} 
-                        alt={getNombreVehiculo(cotizacion.vehiculo)}
-                        className="fin-w-full fin-h-48 fin-object-cover fin-rounded-lg"
-                      />
-                      {cotizacion.vehiculo.imagenesAlternativas?.length > 1 && (
-                        <button
-                          className="fin-absolute fin-bottom-2 fin-right-2 fin-bg-white fin-bg-opacity-90 fin-hover:bg-opacity-100 fin-px-3 fin-py-1 fin-rounded-full fin-text-sm fin-font-medium fin-transition-colors"
-                          onClick={cambiarImagen}
-                        >
-                          <ImagePlus className="fin-w-4 fin-h-4 fin-inline fin-mr-1" />
-                          Cambiar vista
-                        </button>
-                      )}
-                    </div>
-                    <div>
-                      <h4 className="fin-font-semibold fin-text-lg">{getNombreVehiculo(cotizacion.vehiculo)}</h4>
-                      <div className="fin-text-2xl fin-font-bold fin-text-blue-600 fin-mt-2">
-                        {formatPrice(cotizacion.vehiculo.precio)}
-                      </div>
-                      <div className="fin-text-sm fin-text-gray-600 fin-mt-2 fin-space-y-1">
-                        <div>Categoría: {cotizacion.vehiculo.categoria}</div>
-                        <div>Transmisión: {cotizacion.vehiculo.transmision}</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Configuración de financiamiento */}
-                <div className="fin-bg-white fin-rounded-xl fin-shadow-lg fin-p-6">
-                  <h3 className="fin-text-lg fin-font-semibold fin-mb-4 fin-flex fin-items-center">
-                    <CreditCard className="fin-w-5 fin-h-5 fin-mr-2 fin-text-green-500" />
-                    Configuración
-                  </h3>
-                  <div className="fin-space-y-4">
-                    <div>
-                      <label className="fin-block fin-text-sm fin-font-medium fin-text-gray-700 fin-mb-2">
-                        Enganche
-                      </label>
-                      <div className="fin-relative">
-                        <DollarSign className="fin-absolute fin-left-3 fin-top-3 fin-w-4 fin-h-4 fin-text-gray-400" />
+                  <div>
+                    <h3 className="fin-text-lg fin-font-semibold fin-mb-2">{getNombreVehiculo(cotizacion.vehiculo)}</h3>
+                    <p className="fin-text-gray-600 fin-mb-4">Precio: {formatPrice(cotizacion.vehiculo.precio)}</p>
+                    <div className="fin-space-y-4">
+                      <div>
+                        <label className="fin-block fin-text-sm fin-font-medium fin-text-gray-700">Enganche</label>
                         <input
                           type="number"
-                          className="fin-w-full fin-pl-10 fin-pr-4 fin-py-2 fin-border fin-border-gray-300 fin-rounded-lg fin-focus:ring-2 fin-focus:ring-blue-500 fin-focus:border-transparent"
                           value={cotizacion.enganche}
                           onChange={handleEngancheChange}
-                          min={cotizacion.vehiculo.precio < 200000 ? 20000 : cotizacion.vehiculo.precio * 0.10}
-                          max={cotizacion.vehiculo.precio * 0.5}
+                          className="fin-w-full fin-px-4 fin-py-2 fin-rounded-lg fin-border fin-border-gray-300 fin-focus:outline-none fin-focus:ring-2 fin-focus:ring-blue-500"
+                          placeholder="Ingresa el enganche"
                         />
                       </div>
-                      <div className="fin-text-sm fin-text-gray-500 fin-mt-1">
-                        Mínimo: {formatPrice(cotizacion.vehiculo.precio < 200000 ? 20000 : cotizacion.vehiculo.precio * 0.10)}
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="fin-block fin-text-sm fin-font-medium fin-text-gray-700 fin-mb-2">
-                        Tasa de interés anual (%)
-                      </label>
-                      <div className="fin-relative">
-                        <Percent className="fin-absolute fin-left-3 fin-top-3 fin-w-4 fin-h-4 fin-text-gray-400" />
+                      <div>
+                        <label className="fin-block fin-text-sm fin-font-medium fin-text-gray-700">Tasa de interés (% anual)</label>
                         <input
                           type="number"
-                          className="fin-w-full fin-pl-10 fin-pr-4 fin-py-2 fin-border fin-border-gray-300 fin-rounded-lg fin-focus:ring-2 fin-focus:ring-blue-500 fin-focus:border-transparent"
                           value={cotizacion.tasaInteres}
-                          onChange={handleTasaInteresChange}
-                          min="0"
-                          max="30"
+                          disabled // Added to prevent modification
+                          className="fin-w-full fin-px-4 fin-py-2 fin-rounded-lg fin-border fin-border-gray-300 fin-focus:outline-none fin-focus:ring-2 fin-focus:ring-blue-500"
                           step="0.1"
                         />
                       </div>
-                    </div>
-
-                    <div>
-                      <label className="fin-block fin-text-sm fin-font-medium fin-text-gray-700 fin-mb-3">
-                        Plazo de financiamiento
-                      </label>
-                      <div className="fin-grid fin-grid-cols-1 fin-gap-2">
-                        {cotizacion.mensualidadesDisponibles.map((item, index) => (
-                          <div 
-                            key={index}
-                            className={`fin-p-3 fin-rounded-lg fin-border-2 fin-cursor-pointer fin-transition-colors ${
-                              cotizacion.plazo === item.plazo 
-                                ? 'fin-border-blue-500 fin-bg-blue-50' 
-                                : 'fin-border-gray-200 fin-hover:border-gray-300'
-                            }`}
-                            onClick={() => seleccionarMensualidad(item.plazo, item.mensualidad)}
-                          >
-                            <div className="fin-flex fin-justify-between fin-items-center">
-                              <span className="fin-font-medium">{item.plazo} meses</span>
-                              <span className="fin-text-blue-600 fin-font-semibold">
-                                {formatPrice(item.mensualidad)}
-                              </span>
-                            </div>
-                            <div className="fin-text-xs fin-text-gray-500 fin-mt-1">
-                              Intereses: {formatPrice(item.totalIntereses)}
-                            </div>
-                          </div>
-                        ))}
+                      <div>
+                        <label className="fin-block fin-text-sm fin-font-medium fin-text-gray-700">Plazo</label>
+                        <select
+                          className="fin-w-full fin-px-4 fin-py-2 fin-rounded-lg fin-border fin-border-gray-300 fin-focus:outline-none fin-focus:ring-2 fin-focus:ring-blue-500"
+                          value={cotizacion.plazo}
+                          onChange={(e) => seleccionarMensualidad(parseInt(e.target.value), cotizacion.mensualidadesDisponibles.find(m => m.plazo === parseInt(e.target.value))?.mensualidad || 0)}
+                        >
+                          {cotizacion.mensualidadesDisponibles.map(({ plazo, mensualidad }) => (
+                            <option key={plazo} value={plazo}>{plazo} meses - {formatPrice(mensualidad)}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="fin-p-4 fin-bg-blue-50 fin-rounded-lg">
+                        <p><strong>Mensualidad:</strong> {formatPrice(cotizacion.mensualidad)}</p>
+                        <p><strong>Monto a financiar:</strong> {formatPrice(cotizacion.vehiculo.precio - cotizacion.enganche)}</p>
+                        <p><strong>Total a pagar:</strong> {formatPrice(cotizacion.enganche + (cotizacion.mensualidad * cotizacion.plazo))}</p>
+                        <p><strong>Intereses totales:</strong> {formatPrice(cotizacion.mensualidad * cotizacion.plazo - (cotizacion.vehiculo.precio - cotizacion.enganche))}</p>
+                        <p><strong>Comisión:</strong> {formatPrice(cotizacion.comision)}</p>
+                      </div>
+                      <div className="fin-flex fin-space-x-2">
+                        <button
+                          className="fin-flex-1 fin-px-4 fin-py-2 fin-bg-blue-500 fin-text-white fin-rounded-lg fin-font-medium fin-transition-colors"
+                          onClick={calcularCotizacion}
+                        >
+                          <Calculator className="fin-w-4 fin-h-4 fin-inline fin-mr-2" />
+                          Guardar Cotización
+                        </button>
+                        <button
+                          className="fin-flex-1 fin-px-4 fin-py-2 fin-bg-green-500 fin-text-white fin-rounded-lg fin-font-medium fin-transition-colors"
+                          onClick={exportarCotizacion}
+                          disabled={generatingPDF}
+                        >
+                          <Download className="fin-w-4 fin-h-4 fin-inline fin-mr-2" />
+                          {generatingPDF ? 'Generando...' : 'Exportar PDF'}
+                        </button>
+                        <button
+                          className="fin-flex-1 fin-px-4 fin-py-2 fin-bg-indigo-500 fin-text-white fin-rounded-lg fin-font-medium fin-transition-colors"
+                          onClick={compartirCotizacion}
+                        >
+                          <Share2 className="fin-w-4 fin-h-4 fin-inline fin-mr-2" />
+                          Compartir
+                        </button>
                       </div>
                     </div>
                   </div>
                 </div>
-
-                {/* Resumen */}
-                <div className="fin-bg-white fin-rounded-xl fin-shadow-lg fin-p-6">
-                  <h3 className="fin-text-lg fin-font-semibold fin-mb-4 fin-flex fin-items-center">
-                    <FileText className="fin-w-5 fin-h-5 fin-mr-2 fin-text-purple-500" />
-                    Resumen de Cotización
-                  </h3>
-                  <div className="fin-space-y-3">
-                    <div className="fin-flex fin-justify-between fin-py-2 fin-border-b fin-border-gray-100">
-                      <span className="fin-text-gray-600">Precio del vehículo:</span>
-                      <span className="fin-font-semibold">{formatPrice(cotizacion.vehiculo.precio)}</span>
-                    </div>
-                    <div className="fin-flex fin-justify-between fin-py-2 fin-border-b fin-border-gray-100">
-                      <span className="fin-text-gray-600">Enganche:</span>
-                      <span className="fin-font-semibold">{formatPrice(cotizacion.enganche)}</span>
-                    </div>
-                    <div className="fin-flex fin-justify-between fin-py-2 fin-border-b fin-border-gray-100">
-                      <span className="fin-text-gray-600">Plazo:</span>
-                      <span className="fin-font-semibold">{cotizacion.plazo} meses</span>
-                    </div>
-                    <div className="fin-flex fin-justify-between fin-py-2 fin-border-b fin-border-gray-100">
-                      <span className="fin-text-gray-600">Tasa de interés:</span>
-                      <span className="fin-font-semibold">{cotizacion.tasaInteres}%</span>
-                    </div>
-                    <div className="fin-flex fin-justify-between fin-py-2 fin-border-b fin-border-gray-100">
-                      <span className="fin-text-gray-600">Mensualidad:</span>
-                      <span className="fin-font-semibold fin-text-green-600 fin-text-lg">{formatPrice(cotizacion.mensualidad)}</span>
-                    </div>
-                    <div className="fin-flex fin-justify-between fin-py-2 fin-border-b fin-border-gray-100">
-                      <span className="fin-text-gray-600">Comisión (5%):</span>
-                      <span className="fin-font-semibold">{formatPrice(cotizacion.comision)}</span>
-                    </div>
-                    <div className="fin-flex fin-justify-between fin-py-2 fin-border-b fin-border-gray-100">
-                      <span className="fin-text-gray-600">Total a pagar:</span>
-                      <span className="fin-font-semibold">{formatPrice(cotizacion.enganche + (cotizacion.mensualidad * cotizacion.plazo))}</span>
-                    </div>
-                    <div className="fin-flex fin-justify-between fin-py-2">
-                      <span className="fin-text-gray-600">Intereses totales:</span>
-                      <span className="fin-font-semibold fin-text-red-600">{formatPrice(calcularAhorro())}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="fin-mt-6 fin-space-y-2">
-                    <button 
-                      className="fin-w-full fin-bg-blue-500 fin-text-white fin-py-2 fin-px-4 fin-rounded-lg fin-font-medium fin-transition-colors"
-                      onClick={calcularCotizacion}
-                    >
-                      Guardar Cotización
-                    </button>
-                    <div className="fin-flex fin-space-x-2">
-                      <button 
-                        className={`fin-flex-1 fin-bg-gray-100 fin-text-gray-700 fin-py-2 fin-px-4 fin-rounded-lg fin-font-medium fin-transition-colors fin-flex fin-items-center fin-justify-center ${
-                          generatingPDF ? 'fin-disabled' : ''
-                        }`}
-                        onClick={exportarCotizacion}
-                        disabled={generatingPDF}
-                      >
-                        {generatingPDF ? (
-                          <span className="fin-pdf-generating">Generando PDF...</span>
-                        ) : (
-                          <>
-                            <Download className="fin-w-4 fin-h-4 fin-mr-2" />
-                            Exportar PDF
-                          </>
-                        )}
-                      </button>
-                      <button 
-                        className="fin-flex-1 fin-bg-gray-100 fin-text-gray-700 fin-py-2 fin-px-4 fin-rounded-lg fin-font-medium fin-transition-colors fin-flex fin-items-center fin-justify-center"
-                        onClick={compartirCotizacion}
-                      >
-                        <Share2 className="fin-w-4 fin-h-4 fin-mr-2" />
-                        Compartir
-                      </button>
-                    </div>
-                  </div>
+              ) : (
+                <div className="fin-text-center fin-py-10">
+                  <Car className="fin-w-16 fin-h-16 fin-mx-auto fin-text-gray-400 fin-mb-4" />
+                  <p className="fin-text-gray-600">Selecciona un vehículo para comenzar</p>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* Historial de cotizaciones */}
-            <div className="fin-bg-white fin-rounded-xl fin-shadow-lg fin-p-6">
-              <div 
-                className="fin-flex fin-items-center fin-justify-between fin-cursor-pointer"
+            {/* History */}
+            <div className="fin-bg-white fin-rounded-xl fin-shadow-lg fin-p-6 lg:fin-col-span-3">
+              <button
+                className="fin-flex fin-items-center fin-space-x-2 fin-mb-4 fin-text-lg fin-font-semibold"
                 onClick={() => setShowHistorial(!showHistorial)}
               >
-                <h3 className="fin-text-lg fin-font-semibold fin-flex fin-items-center">
-                  <History className="fin-w-5 fin-h-5 fin-mr-2 fin-text-orange-500" />
-                  Historial de Cotizaciones ({historial.length})
-                </h3>
-                {showHistorial ? 
-                  <ChevronUp className="fin-w-5 fin-h-5 fin-text-gray-400" /> : 
-                  <ChevronDown className="fin-w-5 fin-h-5 fin-text-gray-400" />
-                }
-              </div>
-              
+                <History className="fin-w-5 fin-h-5" />
+                <span>Historial de Cotizaciones</span>
+                {showHistorial ? <ChevronUp className="fin-w-5 fin-h-5" /> : <ChevronDown className="fin-w-5 fin-h-5" />}
+              </button>
               {showHistorial && (
-                <div className="fin-mt-4">
+                <div className="fin-space-y-4">
                   {historial.length > 0 ? (
-                    <div className="fin-space-y-4">
-                      {historial.map((item, index) => (
-                        <div key={item.id} className="fin-border fin-border-gray-200 fin-rounded-lg fin-p-4">
-                          <div className="fin-flex fin-justify-between fin-items-start fin-mb-2">
-                            <div>
-                              <h4 className="fin-font-semibold fin-text-gray-800">
-                                {getNombreVehiculo(item.vehiculo)}
-                              </h4>
-                              <p className="fin-text-sm fin-text-gray-500">{item.fecha}</p>
-                            </div>
-                            <div className="fin-flex fin-space-x-2">
-                              <button 
-                                className="fin-p-2 fin-text-blue-600 fin-hover:bg-blue-50 fin-rounded-lg fin-transition-colors"
-                                onClick={() => copiarCotizacion(item)}
-                                title="Usar esta cotización"
-                              >
-                                <Copy className="fin-w-4 fin-h-4" />
-                              </button>
-                              <button 
-                                className="fin-p-2 fin-text-red-600 fin-hover:bg-red-50 fin-rounded-lg fin-transition-colors"
-                                onClick={() => eliminarDelHistorial(item.id)}
-                                title="Eliminar del historial"
-                              >
-                                <Trash2 className="fin-w-4 fin-h-4" />
-                              </button>
-                            </div>
-                          </div>
-                          <div className="fin-grid fin-grid-cols-2 fin-md:grid-cols-4 fin-gap-4 fin-text-sm">
-                            <div>
-                              <span className="fin-text-gray-500">Precio:</span>
-                              <div className="fin-font-semibold">{formatPrice(item.vehiculo.precio)}</div>
-                            </div>
-                            <div>
-                              <span className="fin-text-gray-500">Enganche:</span>
-                              <div className="fin-font-semibold">{formatPrice(item.enganche)}</div>
-                            </div>
-                            <div>
-                              <span className="fin-text-gray-500">Mensualidad:</span>
-                              <div className="fin-font-semibold fin-text-green-600">{formatPrice(item.mensualidad)}</div>
-                            </div>
-                            <div>
-                              <span className="fin-text-gray-500">Plazo:</span>
-                              <div className="fin-font-semibold">{item.plazo} meses</div>
-                            </div>
-                          </div>
+                    historial.map(cot => (
+                      <div key={cot.id} className="fin-p-4 fin-bg-gray-50 fin-rounded-lg fin-flex fin-justify-between fin-items-center">
+                        <div>
+                          <p className="fin-font-semibold">{getNombreVehiculo(cot.vehiculo)}</p>
+                          <p className="fin-text-sm fin-text-gray-600">
+                            {formatPrice(cot.mensualidad)}/mes | {cot.plazo} meses | {formatPrice(cot.enganche)} enganche
+                          </p>
+                          <p className="fin-text-sm fin-text-gray-500">{cot.fecha}</p>
                         </div>
-                      ))}
-                    </div>
+                        <div className="fin-flex fin-space-x-2">
+                          <button
+                            className="fin-p-2 fin-bg-blue-500 fin-text-white fin-rounded-lg"
+                            onClick={() => copiarCotizacion(cot)}
+                          >
+                            <Copy className="fin-w-4 fin-h-4" />
+                          </button>
+                          <button
+                            className="fin-p-2 fin-bg-red-500 fin-text-white fin-rounded-lg"
+                            onClick={() => eliminarDelHistorial(cot.id)}
+                          >
+                            <Trash2 className="fin-w-4 fin-h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))
                   ) : (
-                    <div className="fin-text-center fin-py-8 fin-text-gray-500">
-                      <History className="fin-w-12 fin-h-12 fin-mx-auto fin-mb-4 fin-text-gray-300" />
-                      <p>No hay cotizaciones guardadas</p>
-                      <p className="fin-text-sm">Las cotizaciones aparecerán aquí cuando las generes</p>
-                    </div>
+                    <p className="fin-text-gray-600">No hay cotizaciones en el historial</p>
                   )}
                 </div>
               )}

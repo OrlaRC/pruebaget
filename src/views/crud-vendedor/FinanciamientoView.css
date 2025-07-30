@@ -98,6 +98,14 @@
   background-color: #2980b9;
 }
 
+.fin-bg-green-500 {
+  background-color: #2ecc71;
+}
+
+.fin-bg-green-500:hover {
+  background-color: #27ae60;
+}
+
 .fin-text-white {
   color: #fff;
 }
@@ -263,7 +271,6 @@
   }
 }
 
-
 @media (min-width: 1024px) {
   .fin-lg\:grid-cols-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -287,7 +294,6 @@
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
-
 
 .fin-gap-4 {
   gap: 1rem;
@@ -336,7 +342,6 @@
 .fin-border {
   border-width: 1px;
 }
-
 
 .fin-cursor-pointer {
   cursor: pointer;
@@ -387,7 +392,6 @@
   outline: 2px solid #3498db;
   outline-offset: 2px;
 }
-
 
 .fin-focus\:border-transparent:focus {
   border-color: transparent;
@@ -570,11 +574,9 @@
   background-color: rgba(255, 255, 255, 0.9);
 }
 
-
 .fin-hover\:bg-opacity-100:hover {
   background-color: rgba(255, 255, 255, 1);
 }
-
 
 .fin-py-1 {
   padding-top: 0.25rem;
