@@ -28,12 +28,14 @@ img {
 
 .desktop1-desktop {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap; /* evita que aside y catálogo se muevan */
   width: 100%;
-  padding: 0 24px; /* controla el margen lateral del cuerpo */
-  gap: 32px;
-  justify-content: space-between;
+  padding: 0 24px;
+  gap: 24px;
+  align-items: flex-start;
+  box-sizing: border-box;
 }
+
 
 /* ========== HEADER ========== */
 .desktop3-header2 {
@@ -88,9 +90,9 @@ img {
 
 /* ========== FILTRO ========== */
 .filtro {
-  flex: 1;
-  min-width: 280px;
-  max-width: 400px;
+  flex: 0 0 320px; /* ancho fijo (ejemplo: 320px) */
+  max-width: 320px;
+  min-width: 320px;
   background: #fff;
   border-radius: 24px;
   padding: 24px;
@@ -99,15 +101,26 @@ img {
   flex-direction: column;
   gap: 24px;
   height: fit-content;
-  margin-bottom: 2rem;
+  box-sizing: border-box; /* para que padding no afecte ancho */
+    margin-bottom: 2rem; /* agrega espacio debajo */
+
 }
+
+
 
 .filtro h3 {
   font-size: 20px;
   margin-bottom: 8px;
 }
 
-.filtro .marcas,
+/* --- Aquí modificamos .marcas para que use grid de 4 columnas --- */
+.filtro .marcas {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
 .filtro .colores,
 .filtro .años {
   display: flex;
@@ -119,9 +132,12 @@ img {
   width: 70px;
   height: 70px;
   border-radius: 12px;
+  object-fit: contain;   /* 🔹 mantiene toda la imagen dentro del cuadro */
+  background-color: #fff; /* opcional, para que fondo no quede transparente */
   transition: transform 0.2s ease;
   cursor: pointer;
 }
+
 
 .filtro img:hover {
   transform: scale(1.05);
@@ -144,13 +160,14 @@ img {
 
 /* ========== CATÁLOGO ========== */
 .catalogo {
-  flex: 3;
+  flex: 1;                             /* 🔹 catálogo ocupa el resto */
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 240px));
+  grid-template-columns: repeat(4, 1fr); /* 🔹 4 columnas iguales */
   gap: 24px;
-  justify-content: center;
   align-items: start;
 }
+
+
 
 .catalogo p {
   font-size: 16px;
@@ -182,10 +199,11 @@ img {
 
 .producto img.auto {
   width: 100%;
-  max-height: 160px;
-  object-fit: contain;
+  height: 160px;          /* 🔹 Altura fija */
+  object-fit: cover;      /* 🔹 Hace que todas las imágenes se ajusten igual */
   border-radius: 16px;
 }
+
 
 .producto .marca,
 .producto .precio,
@@ -253,11 +271,16 @@ img {
     flex-direction: column;
   }
   .catalogo {
-    grid-template-columns: repeat(auto-fit, minmax(240px, 240px));
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     justify-content: center;
   }
   .search-bar {
     margin-top: 0;
+  }
+
+  /* Opcional: hacer que marcas pasen a 2 columnas en tablets */
+  .filtro .marcas {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -273,5 +296,10 @@ img {
   }
   .desktop1-buttons {
     justify-content: center;
+  }
+
+  /* Opcional: en móviles una columna para marcas */
+  .filtro .marcas {
+    grid-template-columns: 1fr;
   }
 }

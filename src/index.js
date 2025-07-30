@@ -72,7 +72,7 @@ const App = () => {
             <Route exact path="/cotizacion" component={Cotizacion} />
             <Route exact path="/solicitud-credito" component={SolicitudForm} />
             
-            <Route exact path="/marca/:nombre" component={VistaMarca} />
+            <Route exact path="/marca/:idMarca" component={VistaMarca} />
             <Route exact path="/subtipo/:tipo" component={SubtipoVista} />
             <Route exact path="/auditoria" component={AuditoriaView} />
             <Route exact path="/dashboard" component={DashboardView} />

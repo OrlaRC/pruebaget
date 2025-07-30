@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { useHistory } from 'react-router-dom';
 import Footer from './component/footer';
@@ -6,27 +6,63 @@ import './registro.css';
 import HeaderPrivado from './component/headerPrivado';
 
 const Registro = () => {
-  const history = useHistory();
+  const [formData, setFormData] = useState({
+    nombre: '',
+    email: '',
+    password: '',
+    confirmPassword: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [mensaje, setMensaje] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.id]: e.target.value
+    });
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const password = document.getElementById('password').value;
-    const confirmPassword = document.getElementById('confirm-password').value;
+    setMensaje('');
 
-    // Validación: contraseña debe tener al menos 8 caracteres
-    if (password.length < 8) {
-      alert('La contraseña debe tener al menos 8 caracteres.');
+    if (formData.password !== formData.confirmPassword) {
+      setMensaje('⚠️ Las contraseñas no coinciden');
       return;
     }
 
-    // Validación: contraseñas deben coincidir
-    if (password !== confirmPassword) {
-      alert('Las contraseñas no coinciden.');
-      return;
-    }
+    setLoading(true);
+    try {
+      const res = await fetch('http://localhost:3000/api/usuarios/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          nombre: formData.nombre,
+          email: formData.email,
+          password: formData.password
+        })
+      });
 
-    // Si pasa las validaciones, redirige a /login
-    history.push('/login');
+      const data = await res.json();
+
+      if (res.ok) {
+        // Guardar tokens si quieres usarlos
+        localStorage.setItem('accessToken', data.accessToken);
+        localStorage.setItem('refreshToken', data.refreshToken);
+        localStorage.setItem('user', JSON.stringify(data.user));
+
+        // Redirigir de nuevo a registro (forzoso)
+        window.location.href = '/registro';
+      } else {
+        setMensaje(`❌ Error: ${data.message || 'No se pudo registrar.'}`);
+      }
+    } catch (error) {
+      setMensaje('❌ Error de conexión con el servidor.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -37,10 +73,8 @@ const Registro = () => {
 
       <HeaderPrivado />
 
-      {/* Form Title */}
       <h1 className="desktop-text48">¡Únete solo a lo mejor!</h1>
 
-      {/* Logo grande */}
       <section className="desktop3-group5">
         <img
           alt="carsgetlogo"
@@ -55,7 +89,6 @@ const Registro = () => {
         </div>
       </section>
 
-      {/* Contact Form */}
       <section className="desktop-form-contact">
         <form onSubmit={handleSubmit}>
           <div className="desktop-input-field">
@@ -63,6 +96,8 @@ const Registro = () => {
             <input
               id="nombre"
               type="text"
+              value={formData.nombre}
+              onChange={handleChange}
               placeholder="Nombre completo"
               className="desktop-input"
               required
@@ -73,6 +108,8 @@ const Registro = () => {
             <input
               id="email"
               type="email"
+              value={formData.email}
+              onChange={handleChange}
               placeholder="ejemplo@gmail.com"
               className="desktop-input"
               required
@@ -83,6 +120,8 @@ const Registro = () => {
             <input
               id="password"
               type="password"
+              value={formData.password}
+              onChange={handleChange}
               placeholder="Al menos 8 caracteres"
               className="desktop-input"
               minLength={8}
@@ -90,22 +129,32 @@ const Registro = () => {
             />
           </div>
           <div className="desktop-input-field">
-            <label htmlFor="confirm-password">Confirma Contraseña</label>
+            <label htmlFor="confirmPassword">Confirma Contraseña</label>
             <input
-              id="confirm-password"
+              id="confirmPassword"
               type="password"
+              value={formData.confirmPassword}
+              onChange={handleChange}
               placeholder="Repite la contraseña"
               className="desktop-input"
               minLength={8}
               required
             />
           </div>
-          <button type="submit" className="desktop-button primary">
-            Confirmar
+          <button type="submit" className="desktop-button primary" disabled={loading}>
+            {loading ? 'Registrando...' : 'Confirmar'}
           </button>
         </form>
 
-        <button type="button" className="desktop-button google-button">
+        {mensaje && <p className="desktop-message">{mensaje}</p>}
+
+        <button
+          type="button"
+          className="desktop-button google-button"
+          onClick={() => {
+            window.location.href = 'http://localhost:3000/api/auth/google';
+          }}
+        >
           <img
             src="/external/google1317054511267-rgmw-200h.png"
             alt="Google icon"

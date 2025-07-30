@@ -1,12 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
 import { Link } from 'react-router-dom';
-import { useHistory } from 'react-router-dom';
 import Footer from './component/footer';
 import Header from './component/header';
 import './home.css';
 
-const testimonials = [{
+const testimonials = [
+  {
     id: 1,
     image: "/external/testimonialimage1409-ki5c-300h.png",
     name: "Laura - 26 años",
@@ -26,34 +26,39 @@ const testimonials = [{
     name: "José - 32 años",
     text: "Hace poco cambié mi sedán por una camioneta más amplia. Tengo dos hijos y necesitábamos más espacio y comodidad para nuestros viajes. Me siento tranquilo sabiendo que ahora viajamos más seguros y cómodos. Fue una buena decisión para mi familia.",
     advisor: "Alexis Rico Herrera"
-  }];
-
-const brands = [
-  { name: "Ford", logo: "/external/ford1513-6hxm-200h.png" },
-  { name: "Chevrolet", logo: "/external/chevrolet1516-oqty-200h.png" },
-  { name: "Bentley", logo: "/external/bentley1519-dvky-200h.png" },
-  { name: "Kia", logo: "/external/kia1522-t3zc-200h.png" },
-  { name: "Audi", logo: "/external/audi1525-a9ld-200h.png" },
-  { name: "Suzuki", logo: "/external/suzuki11528-yf6t-200h.png" },
-  { name: "Honda", logo: "/external/honda1531-0gn-200h.png" },
-  { name: "BMW", logo: "/external/bmw1534-lfrd-200h.png" },
-  { name: "Toyota", logo: "/external/toyota1537-8pm-200h.png" },
-  { name: "Subaru", logo: "/external/subaru1540-d56o-200h.png" },
-  { name: "Renault", logo: "/external/renault1543-23z-200h.png" },
-  { name: "Fiat", logo: "/external/fiat1546-452g-200h.png" },
-  { name: "Hyundai", logo: "/external/hyundai1549-obex-200h.png" },
-  { name: "Nissan", logo: "/external/nissan1552-kn7-200h.png" },
-  { name: "Seat", logo: "/external/seat1555-pqyc-200h.png" },
-  { name: "Mazda", logo: "/external/mazda51558-0vco-200h.png" }];
-
-const featuredVehicles = Array(4).fill({
-  price: "$220,000",
-  brand: "Mazda",
-  image: "/external/dnqnp2x946744mlm84432126149052025fmazdamazda325sgr1447-4jnsf-200h.png"
-});
+  }
+];
 
 const Desktop = () => {
-  const history = useHistory();
+  const [vehicles, setVehicles] = useState([]);
+  const [brands, setBrands] = useState([]);
+  const [loadingVehicles, setLoadingVehicles] = useState(true);
+  const [loadingBrands, setLoadingBrands] = useState(true);
+  const [errorVehicles, setErrorVehicles] = useState(null);
+  const [errorBrands, setErrorBrands] = useState(null);
+
+  useEffect(() => {
+    // Fetch vehicles
+    fetch('http://localhost:3000/api/catalogo')
+      .then(res => res.json())
+      .then(json => {
+        if (json.success) setVehicles(json.data);
+        else setErrorVehicles('Error al obtener vehículos');
+      })
+      .catch(() => setErrorVehicles('Error de red al cargar vehículos'))
+      .finally(() => setLoadingVehicles(false));
+
+    // Fetch brands
+    fetch('http://localhost:3000/api/marcas')
+      .then(res => res.json())
+      .then(json => {
+        if (json.success) setBrands(json.data);
+        else setErrorBrands('Error al obtener marcas');
+      })
+      .catch(() => setErrorBrands('Error de red al cargar marcas'))
+      .finally(() => setLoadingBrands(false));
+  }, []);
+
   return (
     <div className="desktop-container">
       <Helmet>
@@ -64,7 +69,7 @@ const Desktop = () => {
       <Header />
 
       <main>
-        {/* 1. Barra de búsqueda */}
+        {/* Barra de búsqueda */}
         <section className="search-section">
           <h2 className="search-title">Encuentra exactamente lo que buscas</h2>
           <div className="search-container">
@@ -83,34 +88,54 @@ const Desktop = () => {
           </div>
         </section>
 
-        {/* 2. Logos de marcas */}
+        {/* Logos de marcas dinámicos */}
         <section className="brands-section">
           <h2 className="section-title">¡DESCUBRE NUESTRO CATÁLOGO AQUÍ!</h2>
-          <div className="brands-grid">
-            {brands.map((brand, index) => (
-              <Link to={`/marca/${brand.name.toLowerCase()}`} key={index} className="brand-card">
-                <img src={brand.logo} alt={brand.name} className="brand-logo" />
-              </Link>
-            ))}
 
-          </div>
+          {loadingBrands && <p>Cargando marcas...</p>}
+          {errorBrands && <p className="error-message">{errorBrands}</p>}
+
+          {!loadingBrands && !errorBrands && (
+            <div className="brands-grid">
+              {brands.map((brand) => (
+                <Link to={`/marca/${brand.idMarca}`} key={brand.idMarca} className="brand-card">
+                  <img src={brand.enlace_imagen} alt={brand.nombre_marca} className="brand-logo" />
+                </Link>
+              ))}
+            </div>
+          )}
         </section>
 
-        {/* 3. Vehículos destacados */}
+        {/* Vehículos destacados */}
         <section className="featured-section">
           <h2 className="section-title">VEHÍCULOS DESTACADOS</h2>
-          <div className="vehicles-grid">
-            {featuredVehicles.map((vehicle, index) => (
-              <div key={index} className="vehicle-card">
-                <img src={vehicle.image} alt={`Vehículo ${vehicle.brand}`} />
-                <p className="vehicle-brand">{vehicle.brand}</p>
-                <p className="vehicle-price">{vehicle.price}</p>
-              </div>
-            ))}
-          </div>
+          {loadingVehicles && <p>Cargando vehículos...</p>}
+          {errorVehicles && <p className="error-message">{errorVehicles}</p>}
+          {!loadingVehicles && !errorVehicles && (
+            <div className="vehicles-grid">
+              {vehicles.slice(0, 4).map((vehicle) => (
+                <div key={vehicle.idVehiculo} className="vehicle-card">
+                  <img src={vehicle.imagenes[0]} alt={`${vehicle.modelo} ${vehicle.version}`} />
+                  <p className="vehicle-model">{vehicle.modelo} {vehicle.version} ({vehicle.ano})</p>
+                  <p className="vehicle-price">${Number(vehicle.precio).toLocaleString()}</p>
+                 <button
+  className="mas-info-btn"
+  onClick={() => {
+    window.location.href = `/info-auto?idVehiculo=${vehicle.idVehiculo}`;
+  }}
+>
+  Más información
+</button>
+
+
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
-        {/* 4. Testimonios */}
+
+        {/* Testimonios */}
         <section className="testimonials-section">
           <h2 className="section-title">CONOCE LA EXPERIENCIA DE NUESTROS CLIENTES</h2>
           <div className="testimonials-carousel">
@@ -127,7 +152,7 @@ const Desktop = () => {
           </div>
         </section>
 
-        {/* 5. Promociones */}
+        {/* Promociones */}
         <section className="promo-section">
           <div className="promo-item">
             <p>Solicitud digital con un</p>
@@ -143,7 +168,7 @@ const Desktop = () => {
           </div>
         </section>
 
-        {/* 7. ¿Por qué elegirnos? */}
+        {/* ¿Por qué elegirnos? */}
         <section className="why-choose-us">
           <h2 className="section-title">¿POR QUÉ ELEGIRNOS?</h2>
           <div className="benefits-grid">
@@ -159,9 +184,6 @@ const Desktop = () => {
       </main>
 
       <Footer />
-
-
-
     </div>
   );
 };
