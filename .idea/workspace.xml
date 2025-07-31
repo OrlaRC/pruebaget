@@ -6,8 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="ead7a63f-3e98-43ee-bfd6-f5240fee6f0d" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/crud-vendedor/FinanciamientoView.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/crud-vendedor/FinanciamientoView.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/crud-vendedor/FinanciamientoView.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/crud-vendedor/FinanciamientoView.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/crud-vendedor/PublicacionesViewVendedor.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/crud-vendedor/PublicacionesViewVendedor.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -17,11 +16,23 @@
   <component name="Git.Settings">
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="cambio-crud" />
+        <entry key="$PROJECT_DIR$" value="main" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {
+    "state": "OPEN",
+    "assignee": "RobotDRMX"
+  }
+}]]></component>
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/OrlaRC/pruebaget",
+    "accountId": "ac0ef5ea-b919-4c5a-8848-88dde7a54a14"
+  }
+}]]></component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 1
 }</component>
@@ -60,7 +71,7 @@
                   <entry key="branch">
                     <value>
                       <list>
-                        <option value="main" />
+                        <option value="origin/main" />
                       </list>
                     </value>
                   </entry>
