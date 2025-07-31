@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, Edit, Trash2 } from 'lucide-react';
 import LayoutAdmin from '../layout/LayoutAdmin';
+import { useHistory } from 'react-router-dom';
 
 const MarcasView = ({ showNotification }) => {
   const [marcas, setMarcas] = useState([]);
@@ -8,30 +9,71 @@ const MarcasView = ({ showNotification }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState({
     nombre_marca: '',
-    enlace_imagen: ''
+    enlace_imagen: null
   });
+  const [previewImage, setPreviewImage] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const history = useHistory();
 
-  useEffect(() => {
-    const mockMarcas = [
-      { idMarca: 1, nombre_marca: 'Toyota', enlace_imagen: 'https://logo.clearbit.com/toyota.com' },
-      { idMarca: 2, nombre_marca: 'Ford', enlace_imagen: 'https://logo.clearbit.com/ford.com' },
-      { idMarca: 3, nombre_marca: 'Honda', enlace_imagen: 'https://logo.clearbit.com/honda.com' },
-      { idMarca: 4, nombre_marca: 'Chevrolet', enlace_imagen: 'https://logo.clearbit.com/chevrolet.com' },
-      { idMarca: 5, nombre_marca: 'Nissan', enlace_imagen: 'https://logo.clearbit.com/nissan.com' }
-    ];
-    setMarcas(mockMarcas);
-    setFilteredMarcas(mockMarcas);
-  }, []);
+  // Igual que en UsuariosView: obtenemos token y si no hay, forzamos login
+  const getAuthHeaders = (isJson = false) => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      showNotification?.('No autorizado. Por favor inicia sesión.', 'error');
+      history.push('/login');
+      return null;
+    }
+    return isJson
+      ? { 
+          'Content-Type': 'application/json', 
+          Authorization: `Bearer ${token}` 
+        }
+      : {
+          Authorization: `Bearer ${token}`
+        };
+  };
 
+  // 🔹 GET marcas (JSON)
   useEffect(() => {
-    const filtered = marcas.filter(marca =>
-      marca.nombre_marca.toLowerCase().includes(searchTerm.toLowerCase())
+    const headers = getAuthHeaders(true);
+    if (!headers) return;
+
+    let isMounted = true;
+    fetch('http://localhost:3000/api/marcas', { headers })
+      .then(res => {
+        if (res.status === 401) throw new Error('401');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then(json => {
+        if (!json.success) throw new Error(json.message);
+        if (isMounted) {
+          setMarcas(json.data);
+          setFilteredMarcas(json.data);
+        }
+      })
+      .catch(err => {
+        console.error('Error al cargar marcas:', err);
+        if (err.message === '401') {
+          showNotification?.('Token inválido o expirado', 'error');
+          history.push('/login');
+        } else {
+          showNotification?.('Error al cargar marcas', 'error');
+        }
+      });
+
+    return () => { isMounted = false; };
+  }, [showNotification, history]);
+
+  // Filtrado local
+  useEffect(() => {
+    const lower = searchTerm.toLowerCase();
+    setFilteredMarcas(
+      marcas.filter(m => m.nombre_marca.toLowerCase().includes(lower))
     );
-    setFilteredMarcas(filtered);
     setCurrentPage(1);
   }, [searchTerm, marcas]);
 
@@ -39,62 +81,116 @@ const MarcasView = ({ showNotification }) => {
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
-
   const totalPages = Math.ceil(filteredMarcas.length / itemsPerPage);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    try {
-      if (editingId) {
-        setMarcas(marcas.map(m =>
-          m.idMarca === editingId ? { ...m, ...formData } : m
-        ));
-        if (showNotification) {
-          showNotification('Marca actualizada correctamente');
-        }
-      } else {
-        const newMarca = { ...formData, idMarca: marcas.length + 1 };
-        setMarcas([...marcas, newMarca]);
-        if (showNotification) {
-          showNotification('Marca creada correctamente');
-        }
-      }
-      resetForm();
-    } catch (error) {
-      if (showNotification) {
-        showNotification('Error al guardar la marca', 'error');
-      }
+  // Inputs
+  const handleInputChange = e => {
+    const { name } = e.target;
+    if (name === 'enlace_imagen') {
+      const file = e.target.files[0];
+      setFormData(fd => ({ ...fd, enlace_imagen: file }));
+      setPreviewImage(file ? URL.createObjectURL(file) : null);
+    } else {
+      const value = e.target.value;
+      setFormData(fd => ({ ...fd, [name]: value }));
     }
   };
 
-  const handleEdit = (marca) => {
-    setFormData({
-      nombre_marca: marca.nombre_marca,
-      enlace_imagen: marca.enlace_imagen
-    });
+  // POST / PUT (multipart/form-data)
+  const handleSubmit = e => {
+    e.preventDefault();
+    const headers = getAuthHeaders();
+    if (!headers) return;
+
+    const fd = new FormData();
+    fd.append('nombre_marca', formData.nombre_marca);
+    if (formData.enlace_imagen) {
+      fd.append('enlace_imagen', formData.enlace_imagen);
+    }
+
+    let url = 'http://localhost:3000/api/marcas';
+    let method = 'POST';
+    if (editingId) {
+      url += `/${editingId}`;
+      method = 'PUT';
+    }
+
+    fetch(url, {
+      method,
+      headers,
+      body: fd
+    })
+      .then(res => {
+        if (res.status === 401) throw new Error('401');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then(json => {
+        if (!json.success) throw new Error(json.message);
+        if (editingId) {
+          setMarcas(ms =>
+            ms.map(m => (m.idMarca === editingId ? json.data : m))
+          );
+          showNotification?.('Marca actualizada correctamente');
+        } else {
+          setMarcas(ms => [...ms, json.data]);
+          showNotification?.('Marca creada correctamente');
+        }
+        resetForm();
+      })
+      .catch(err => {
+        console.error('Error al guardar marca:', err);
+        if (err.message === '401') {
+          showNotification?.('Token inválido o expirado', 'error');
+          history.push('/login');
+        } else {
+          showNotification?.('Error al guardar la marca', 'error');
+        }
+      });
+  };
+
+  // Cargar edición
+  const handleEdit = marca => {
+    setFormData({ nombre_marca: marca.nombre_marca, enlace_imagen: null });
+    setPreviewImage(marca.enlace_imagen);
     setEditingId(marca.idMarca);
     setShowForm(true);
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm('¿Estás seguro de eliminar esta marca?')) {
-      setMarcas(marcas.filter(m => m.idMarca !== id));
-      if (showNotification) {
-        showNotification('Marca eliminada correctamente');
-      }
-    }
+  // DELETE
+  const handleDelete = id => {
+    if (!window.confirm('¿Estás seguro de eliminar esta marca?')) return;
+    const headers = getAuthHeaders(true);
+    if (!headers) return;
+
+    fetch(`http://localhost:3000/api/marcas/${id}`, {
+      method: 'DELETE',
+      headers
+    })
+      .then(res => {
+        if (res.status === 401) throw new Error('401');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then(json => {
+        if (!json.success) throw new Error(json.message);
+        setMarcas(ms => ms.filter(m => m.idMarca !== id));
+        showNotification?.('Marca eliminada correctamente');
+      })
+      .catch(err => {
+        console.error('Error al eliminar marca:', err);
+        if (err.message === '401') {
+          showNotification?.('Token inválido o expirado', 'error');
+          history.push('/login');
+        } else {
+          showNotification?.('Error al eliminar la marca', 'error');
+        }
+      });
   };
 
   const resetForm = () => {
-    setFormData({
-      nombre_marca: '',
-      enlace_imagen: ''
-    });
+    setFormData({ nombre_marca: '', enlace_imagen: null });
+    setPreviewImage(null);
     setEditingId(null);
     setShowForm(false);
   };
@@ -111,12 +207,12 @@ const MarcasView = ({ showNotification }) => {
                 type="text"
                 placeholder="Buscar marcas..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={e => setSearchTerm(e.target.value)}
               />
             </div>
             <button
               className="btn btn-primary"
-              onClick={() => setShowForm(!showForm)}
+              onClick={() => setShowForm(sf => !sf)}
             >
               <Plus size={18} /> {showForm ? 'Cancelar' : 'Nueva Marca'}
             </button>
@@ -138,20 +234,19 @@ const MarcasView = ({ showNotification }) => {
                   />
                 </div>
                 <div className="form-group">
-                  <label>Enlace de Imagen</label>
+                  <label>Imagen de la Marca</label>
                   <input
-                    type="text"
+                    type="file"
                     name="enlace_imagen"
-                    value={formData.enlace_imagen}
+                    accept="image/*"
                     onChange={handleInputChange}
-                    placeholder="https://ejemplo.com/imagen.jpg"
                   />
-                  {formData.enlace_imagen && (
+                  {previewImage && (
                     <div className="image-preview">
                       <img
-                        src={formData.enlace_imagen}
+                        src={previewImage}
                         alt="Vista previa"
-                        onError={(e) => e.target.style.display = 'none'}
+                        onError={e => (e.target.style.display = 'none')}
                       />
                     </div>
                   )}
@@ -181,7 +276,7 @@ const MarcasView = ({ showNotification }) => {
             </thead>
             <tbody>
               {paginatedMarcas.length > 0 ? (
-                paginatedMarcas.map((marca) => (
+                paginatedMarcas.map(marca => (
                   <tr key={marca.idMarca}>
                     <td>{marca.idMarca}</td>
                     <td>{marca.nombre_marca}</td>
@@ -191,23 +286,17 @@ const MarcasView = ({ showNotification }) => {
                           src={marca.enlace_imagen}
                           alt={marca.nombre_marca}
                           className="table-image"
-                          onError={(e) => e.target.style.display = 'none'}
+                          onError={e => (e.target.style.display = 'none')}
                         />
-                      ) : 'No disponible'}
+                      ) : (
+                        'No disponible'
+                      )}
                     </td>
                     <td className="actions">
-                      <button
-                        className="btn-icon btn-warning"
-                        onClick={() => handleEdit(marca)}
-                        title="Editar"
-                      >
+                      <button className="btn-icon btn-warning" onClick={() => handleEdit(marca)} title="Editar">
                         <Edit size={16} />
                       </button>
-                      <button
-                        className="btn-icon btn-danger"
-                        onClick={() => handleDelete(marca.idMarca)}
-                        title="Eliminar"
-                      >
+                      <button className="btn-icon btn-danger" onClick={() => handleDelete(marca.idMarca)} title="Eliminar">
                         <Trash2 size={16} />
                       </button>
                     </td>
@@ -215,9 +304,7 @@ const MarcasView = ({ showNotification }) => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="4" className="no-results">
-                    No se encontraron marcas
-                  </td>
+                  <td colSpan="4" className="no-results">No se encontraron marcas</td>
                 </tr>
               )}
             </tbody>
@@ -226,17 +313,11 @@ const MarcasView = ({ showNotification }) => {
 
         {totalPages > 1 && (
           <div className="pagination">
-            <button
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-            >
+            <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
               Anterior
             </button>
             <span>Página {currentPage} de {totalPages}</span>
-            <button
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-            >
+            <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
               Siguiente
             </button>
           </div>

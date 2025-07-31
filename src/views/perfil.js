@@ -1,7 +1,6 @@
-// src/views/Perfil.js
 import React, { useState, useEffect } from 'react';
 import { useHistory } from 'react-router-dom';
-import HeaderPrivado from './component/headerPrivado';
+import Header from './component/header';
 import Footer from './component/footer';
 import { Helmet } from 'react-helmet';
 import './perfil.css';
@@ -12,31 +11,74 @@ const Perfil = () => {
     nombre: '',
     email: '',
     telefono: '',
+    direccion: '',
+    password: ''
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('accessToken');
     if (!token) {
-      console.log('No token, redirecting to /login');
       history.push('/login');
       return;
     }
 
-    // Simular datos del usuario basados en el token
-    const email = token.split('-')[2]; // Extraer el correo del token simulado
-    const simulatedUserData = {
-      nombre: email === 'angel@gmail.com' ? 'Angel Cliente' : 'Usuario Desconocido',
-      email: email,
-      telefono: '1234567890',
-    };
+    const storedUser = JSON.parse(localStorage.getItem('user'));
+    console.log('User from localStorage:', storedUser);
 
-    setTimeout(() => {
-      setUserData(simulatedUserData);
+    if (!storedUser) {
+      setError('No se encontró información del usuario en localStorage');
       setLoading(false);
-    }, 1000); // Simular una carga de datos
+      return;
+    }
+
+    // Aquí obtén el id de usuario correcto según la propiedad que tenga storedUser
+    const userId = storedUser.id || storedUser.idUsuario || storedUser.userId;
+    if (!userId) {
+      setError('No se encontró el id del usuario en localStorage');
+      setLoading(false);
+      return;
+    }
+
+    // Petición GET para obtener los datos actualizados del usuario
+    fetch(`http://localhost:3000/api/usuarios/${userId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error(`Error al obtener perfil: ${res.statusText}`);
+        }
+        const data = await res.json();
+        return data;
+      })
+      .then((data) => {
+        // Ajusta esto según la estructura real de la respuesta
+        setUserData({
+          nombre: data.nombre || '',
+          email: data.email || storedUser.email || '',
+          telefono: data.telefono || '',
+          direccion: data.direccion || '',
+          password: '' // Nunca llenes la contraseña por seguridad
+        });
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error('Fallo al obtener datos de usuario:', err);
+        // En caso de error, usar datos de localStorage si existen
+        setUserData({
+          nombre: storedUser.nombre || '',
+          email: storedUser.email || '',
+          telefono: storedUser.telefono || '',
+          direccion: storedUser.direccion || '',
+          password: ''
+        });
+        setError('No se pudo obtener datos desde la API, mostrando datos guardados.');
+        setLoading(false);
+      });
   }, [history]);
 
   const handleInputChange = (e) => {
@@ -46,16 +88,50 @@ const Perfil = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Simular actualización de datos
-    setSuccessMessage('Perfil actualizado correctamente');
-    setTimeout(() => setSuccessMessage(null), 3000);
-    console.log('Datos actualizados:', userData);
-  };
+    setError(null);
+    setSuccessMessage(null);
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('idRol');
-    history.push('/login');
+    try {
+      const token = localStorage.getItem('accessToken');
+      const storedUser = JSON.parse(localStorage.getItem('user'));
+      const userId = storedUser.id || storedUser.idUsuario || storedUser.userId;
+
+      const response = await fetch(`http://localhost:3000/api/usuarios/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          nombre: userData.nombre,
+          telefono: userData.telefono,
+          direccion: userData.direccion,
+          password: userData.password,
+          idRol: 3,
+          estado: 'activo'
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al actualizar perfil');
+      }
+
+      setSuccessMessage('Perfil actualizado correctamente');
+
+      // Actualizar localStorage con datos nuevos excepto password
+      localStorage.setItem(
+        'user',
+        JSON.stringify({
+          ...storedUser,
+          nombre: userData.nombre,
+          telefono: userData.telefono,
+          direccion: userData.direccion
+        })
+      );
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   return (
@@ -65,7 +141,7 @@ const Perfil = () => {
         <meta name="description" content="Administra tu perfil y actualiza tus datos personales" />
       </Helmet>
 
-      <HeaderPrivado />
+      <Header />
 
       <main>
         <section className="perfil-section">
@@ -74,7 +150,7 @@ const Perfil = () => {
           {error && <p className="error-message">{error}</p>}
           {successMessage && <p className="success-message">{successMessage}</p>}
 
-          {!loading && !error && (
+          {!loading && (
             <div className="form-container">
               <form onSubmit={handleSubmit}>
                 <div className="form-group">
@@ -87,16 +163,12 @@ const Perfil = () => {
                     required
                   />
                 </div>
+
                 <div className="form-group">
                   <label htmlFor="email">Correo Electrónico</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={userData.email}
-                    onChange={handleInputChange}
-                    required
-                  />
+                  <input type="email" name="email" value={userData.email} readOnly />
                 </div>
+
                 <div className="form-group">
                   <label htmlFor="telefono">Teléfono</label>
                   <input
@@ -106,13 +178,32 @@ const Perfil = () => {
                     onChange={handleInputChange}
                   />
                 </div>
+
+                <div className="form-group">
+                  <label htmlFor="direccion">Dirección</label>
+                  <input
+                    type="text"
+                    name="direccion"
+                    value={userData.direccion}
+                    onChange={handleInputChange}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="password">Contraseña</label>
+                  <input
+                    type="password"
+                    name="password"
+                    value={userData.password}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+
                 <button type="submit" className="submit-button">
                   Guardar Cambios
                 </button>
               </form>
-              <button className="logout-button" onClick={handleLogout}>
-                Cerrar Sesión
-              </button>
             </div>
           )}
         </section>

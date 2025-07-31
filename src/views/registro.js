@@ -6,6 +6,7 @@ import './registro.css';
 import HeaderPrivado from './component/headerPrivado';
 
 const Registro = () => {
+  const history = useHistory();
   const [formData, setFormData] = useState({
     nombre: '',
     email: '',
@@ -33,11 +34,10 @@ const Registro = () => {
 
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:3000/api/usuarios/register', {
+      // 1) Registrar usuario
+      const registerRes = await fetch('http://localhost:3000/api/usuarios/register', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           nombre: formData.nombre,
           email: formData.email,
@@ -45,20 +45,41 @@ const Registro = () => {
         })
       });
 
-      const data = await res.json();
-
-      if (res.ok) {
-        // Guardar tokens si quieres usarlos
-        localStorage.setItem('accessToken', data.accessToken);
-        localStorage.setItem('refreshToken', data.refreshToken);
-        localStorage.setItem('user', JSON.stringify(data.user));
-
-        // Redirigir de nuevo a registro (forzoso)
-        window.location.href = '/registro';
-      } else {
-        setMensaje(`❌ Error: ${data.message || 'No se pudo registrar.'}`);
+      const registerData = await registerRes.json();
+      if (!registerRes.ok) {
+        setMensaje(`❌ Error: ${registerData.message || 'No se pudo registrar.'}`);
+        setLoading(false);
+        return;
       }
+
+      // 2) Loguear automáticamente
+      const loginRes = await fetch('http://localhost:3000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password
+        })
+      });
+
+      const loginData = await loginRes.json();
+      if (!loginRes.ok) {
+        setMensaje(`❌ Error al iniciar sesión: ${loginData.message || loginData}`);
+        setLoading(false);
+        return;
+      }
+
+      // 3) Guardar tokens y usuario
+      const { accessToken, refreshToken, user } = loginData.data;
+      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('refreshToken', refreshToken);
+      localStorage.setItem('user', JSON.stringify(user));
+
+      // 4) Redirigir al Home
+      history.push('/');
+
     } catch (error) {
+      console.error(error);
       setMensaje('❌ Error de conexión con el servidor.');
     } finally {
       setLoading(false);
@@ -142,7 +163,7 @@ const Registro = () => {
             />
           </div>
           <button type="submit" className="desktop-button primary" disabled={loading}>
-            {loading ? 'Registrando...' : 'Confirmar'}
+            {loading ? 'Procesando...' : 'Confirmar'}
           </button>
         </form>
 

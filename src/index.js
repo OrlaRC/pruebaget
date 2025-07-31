@@ -10,6 +10,7 @@ import './views/crud-vendedor/FinanciamientoView.css';
 import { NotificationContext } from './context/NotificationContext';
 
 // Importa todas las vistas
+import Callback from './views/callback';
 import Home from './views/home';
 import Catalogo from './views/catalogo';
 import Testimonios from './views/testimonios';
@@ -24,7 +25,6 @@ import VistaMarca from './views/vistaMarca';
 import SubtipoVista from './views/subtipoVista';
 import SolicitudForm from './views/formulario/SolicitudForm';
 import Perfil from './views/perfil'; // Vista de perfil
-import PrivateRoute from './views/component/PrivateRoute'; // Importar PrivateRoute
 
 // Vistas de administración
 import AuditoriaView from './views/cruds/AuditoriaView';
@@ -73,7 +73,7 @@ const App = () => {
             <Route exact path="/registro" component={Registro} />
             <Route exact path="/cotizacion" component={Cotizacion} />
             <Route exact path="/solicitud-credito" component={SolicitudForm} />
-            <PrivateRoute exact path="/perfil" component={Perfil} />
+            <Route exact path="/perfil" component={Perfil} />
             <Route exact path="/marca/:idMarca" component={VistaMarca} />
             <Route exact path="/subtipo/:tipo" component={SubtipoVista} />
             <Route exact path="/auditoria" component={AuditoriaView} />
@@ -90,6 +90,7 @@ const App = () => {
             <Route exact path="/settings-vendedor" component={SettingsViewVendedor} />
             <Route exact path="/vehiculos-vendedor" component={VehiculosViewVendedor} />
             <Route exact path="/ventas-vendedor" component={VentasView} />
+            <Route exact path="/auth/callback" component={Callback} />
             <Route path="*" component={NotFound} />
           </Switch>
         </div>

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { Search, Plus, Edit, Trash2 } from 'lucide-react';
 import LayoutAdmin from '../layout/LayoutAdmin';
+import { useHistory } from 'react-router-dom';
 
 const VehiculosView = ({ showNotification }) => {
   const [vehiculos, setVehiculos] = useState([]);
@@ -9,81 +11,76 @@ const VehiculosView = ({ showNotification }) => {
   const [filteredVehiculos, setFilteredVehiculos] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState({
-    idVendedor: '',
-    idMarca: '',
-    modelo: '',
-    version: '',
-    ano: '',
-    kilometraje: '',
-    precio: '',
-    caracteristicas: '',
-    descripcion: '',
-    estado: 'disponible',
-    tipoCombustible: '',
-    transmision: ''
+    idVendedor: '', idMarca: '', modelo: '', version: '', ano: '',
+    kilometraje: '', precio: '', caracteristicas: '', descripcion: '',
+    estado: 'disponible', tipoCombustible: '', transmision: '', imagenes: []
   });
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const history = useHistory();
+
+  // Auth headers
+  const getAuthHeaders = (json = false) => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      showNotification?.('No autorizado. Por favor inicia sesión.', 'error');
+      history.push('/login');
+      return null;
+    }
+    return json
+      ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+      : { Authorization: `Bearer ${token}` };
+  };
 
   useEffect(() => {
-    const mockMarcas = [
-      { idMarca: 1, nombre_marca: 'Toyota' },
-      { idMarca: 2, nombre_marca: 'Ford' },
-      { idMarca: 3, nombre_marca: 'Honda' }
-    ];
-    const mockVendedores = [
-      { idUsuario: 2, nombre: 'Vendedor 1' },
-      { idUsuario: 3, nombre: 'Vendedor 2' }
-    ];
-    const mockVehiculos = [
-      {
-        idVehiculo: 1,
-        idVendedor: 2,
-        idMarca: 1,
-        modelo: 'Corolla',
-        version: 'SE',
-        ano: 2020,
-        kilometraje: 25000,
-        precio: 25000.00,
-        estado: 'disponible',
-        tipoCombustible: 'Gasolina',
-        transmision: 'Automática',
-        caracteristicas: 'Aire acondicionado, Bluetooth, Cámara de reversa',
-        descripcion: 'Excelente estado, único dueño'
-      },
-      {
-        idVehiculo: 2,
-        idVendedor: 3,
-        idMarca: 2,
-        modelo: 'F-150',
-        version: 'Lariat',
-        ano: 2019,
-        kilometraje: 45000,
-        precio: 35000.00,
-        estado: 'disponible',
-        tipoCombustible: 'Diésel',
-        transmision: 'Automática',
-        caracteristicas: '4x4, Asientos de cuero, Sistema de navegación',
-        descripcion: 'Truck en perfectas condiciones'
-      }
-    ];
-    setMarcas(mockMarcas);
-    setVendedores(mockVendedores);
-    setVehiculos(mockVehiculos);
-    setFilteredVehiculos(mockVehiculos);
+    fetchMarcas(); fetchVendedores(); fetchVehiculos();
   }, []);
 
+  const fetchVehiculos = async () => {
+    const headers = getAuthHeaders(true);
+    if (!headers) return;
+    try {
+      const res = await axios.get('http://localhost:3000/api/catalogo', { headers });
+      if (res.data.success) setVehiculos(res.data.data);
+    } catch {
+      showNotification?.('Error al cargar vehículos', 'error');
+    }
+  };
+
+  const fetchMarcas = async () => {
+    const headers = getAuthHeaders(true);
+    if (!headers) return;
+    try {
+      const res = await axios.get('http://localhost:3000/api/marcas', { headers });
+      if (res.data.success) setMarcas(res.data.data);
+    } catch {
+      showNotification?.('Error al cargar marcas', 'error');
+    }
+  };
+
+  const fetchVendedores = async () => {
+    const headers = getAuthHeaders(true);
+    if (!headers) return;
+    try {
+      const res = await axios.get('http://localhost:3000/api/usuarios', { headers });
+      if (res.data.success) {
+        setVendedores(res.data.data.filter(u => u.idRol === 2));
+      }
+    } catch {
+      showNotification?.('Error al cargar vendedores', 'error');
+    }
+  };
+
   useEffect(() => {
-    const filtered = vehiculos.filter((vehiculo) => {
-      const marca = marcas.find(m => m.idMarca === vehiculo.idMarca);
-      const marcaNombre = marca ? marca.nombre_marca.toLowerCase() : '';
-      return (
-        marcaNombre.includes(searchTerm.toLowerCase()) ||
-        vehiculo.modelo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        vehiculo.ano.toString().includes(searchTerm)
-      );
+    const lower = searchTerm.toLowerCase();
+    const filtered = vehiculos.filter(v => {
+      const m = marcas.find(x => x.idMarca === v.idMarca);
+      const nombre = m?.nombre_marca.toLowerCase() || '';
+      return nombre.includes(lower) ||
+             v.modelo.toLowerCase().includes(lower) ||
+             v.ano.toString().includes(lower);
     });
     setFilteredVehiculos(filtered);
     setCurrentPage(1);
@@ -93,102 +90,104 @@ const VehiculosView = ({ showNotification }) => {
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
-
   const totalPages = Math.ceil(filteredVehiculos.length / itemsPerPage);
 
-  const handleInputChange = (e) => {
+  const handleInputChange = e => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    setFormData(fd => ({ ...fd, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleFileChange = e => {
+    setFormData(fd => ({ ...fd, imagenes: Array.from(e.target.files) }));
+  };
+
+  const handleSubmit = async e => {
     e.preventDefault();
+    const headers = getAuthHeaders();
+    if (!headers) return;
+    const fd = new FormData();
+    Object.entries(formData).forEach(([k, v]) => {
+      if (k === 'imagenes') v.forEach(f => fd.append('imagenes', f));
+      else fd.append(k, v);
+    });
     try {
       if (editingId) {
-        setVehiculos(vehiculos.map(v =>
-          v.idVehiculo === editingId ? { ...v, ...formData } : v
-        ));
-        if (showNotification) {
-          showNotification('Vehículo actualizado correctamente');
-        }
+        await axios.put(
+          `http://localhost:3000/api/catalogo/${editingId}`, fd, { headers }
+        );
+        showNotification?.('Vehículo actualizado correctamente');
       } else {
-        const newVehiculo = { ...formData, idVehiculo: vehiculos.length + 1 };
-        setVehiculos([...vehiculos, newVehiculo]);
-        if (showNotification) {
-          showNotification('Vehículo creado correctamente');
-        }
+        await axios.post(
+          'http://localhost:3000/api/catalogo', fd, { headers }
+        );
+        showNotification?.('Vehículo creado correctamente');
       }
-      resetForm();
-    } catch (error) {
-      if (showNotification) {
-        showNotification('Error al guardar el vehículo', 'error');
-      }
+      resetForm(); fetchVehiculos();
+    } catch {
+      showNotification?.('Error al guardar el vehículo', 'error');
     }
   };
 
-  const handleEdit = (vehiculo) => {
-    setFormData({
-      idVendedor: vehiculo.idVendedor,
-      idMarca: vehiculo.idMarca,
-      modelo: vehiculo.modelo,
-      version: vehiculo.version,
-      ano: vehiculo.ano,
-      kilometraje: vehiculo.kilometraje,
-      precio: vehiculo.precio,
-      caracteristicas: vehiculo.caracteristicas || '',
-      descripcion: vehiculo.descripcion || '',
-      estado: vehiculo.estado,
-      tipoCombustible: vehiculo.tipoCombustible || '',
-      transmision: vehiculo.transmision || ''
-    });
-    setEditingId(vehiculo.idVehiculo);
-    setShowForm(true);
+  const handleEdit = async v => {
+    const headers = getAuthHeaders(true);
+    if (!headers) return;
+    try {
+      const res = await axios.get(
+        `http://localhost:3000/api/catalogo/${v.idVehiculo}`, { headers }
+      );
+      if (res.data.success) {
+        const d = res.data.data;
+        setFormData({
+          idVendedor: d.idVendedor,
+          idMarca: d.idMarca,
+          modelo: d.modelo,
+          version: d.version,
+          ano: d.ano,
+          kilometraje: d.kilometraje,
+          precio: d.precio,
+          caracteristicas: d.caracteristicas || '',
+          descripcion: d.descripcion || '',
+          estado: d.estado,
+          tipoCombustible: d.tipoCombustible || '',
+          transmision: d.transmision || '',
+          imagenes: []
+        });
+        setEditingId(d.idVehiculo);
+        setShowForm(true);
+      }
+    } catch {
+      showNotification?.('Error al cargar datos del vehículo', 'error');
+    }
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm('¿Estás seguro de eliminar este vehículo?')) {
-      setVehiculos(vehiculos.filter(v => v.idVehiculo !== id));
-      if (showNotification) {
-        showNotification('Vehículo eliminado correctamente');
-      }
+  const handleDelete = async id => {
+    if (!window.confirm('¿Estás seguro de eliminar este vehículo?')) return;
+    const headers = getAuthHeaders(true);
+    if (!headers) return;
+    try {
+      await axios.delete(
+        `http://localhost:3000/api/catalogo/${id}`, { headers }
+      );
+      showNotification?.('Vehículo eliminado correctamente');
+      fetchVehiculos();
+    } catch {
+      showNotification?.('Error al eliminar el vehículo', 'error');
     }
   };
 
   const resetForm = () => {
     setFormData({
-      idVendedor: '',
-      idMarca: '',
-      modelo: '',
-      version: '',
-      ano: '',
-      kilometraje: '',
-      precio: '',
-      caracteristicas: '',
-      descripcion: '',
-      estado: 'disponible',
-      tipoCombustible: '',
-      transmision: ''
+      idVendedor: '', idMarca: '', modelo: '', version: '', ano: '',
+      kilometraje: '', precio: '', caracteristicas: '', descripcion: '',
+      estado: 'disponible', tipoCombustible: '', transmision: '', imagenes: []
     });
     setEditingId(null);
     setShowForm(false);
   };
 
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: 'MXN'
-    }).format(price);
-  };
-
-  const getMarcaNombre = (idMarca) => {
-    const marca = marcas.find(m => m.idMarca === idMarca);
-    return marca ? marca.nombre_marca : 'Desconocido';
-  };
-
-  const getVendedorNombre = (idVendedor) => {
-    const vendedor = vendedores.find(v => v.idUsuario === idVendedor);
-    return vendedor ? vendedor.nombre : 'Desconocido';
-  };
+  const formatPrice = p => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(p);
+  const getMarcaNombre = id => marcas.find(m => m.idMarca === id)?.nombre_marca || 'Desconocido';
+  const getVendedorNombre = id => vendedores.find(x => x.idUsuario === id)?.nombre || 'Desconocido';
 
   return (
     <LayoutAdmin>
@@ -197,24 +196,20 @@ const VehiculosView = ({ showNotification }) => {
           <h3 className="card-title">Gestión de Vehículos</h3>
           <div className="header-actions">
             <div className="search-box">
-              <Search size={18} />
+              <Search size={18}/>
               <input
                 type="text"
                 placeholder="Buscar vehículos..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={e => setSearchTerm(e.target.value)}
               />
             </div>
-            <button
-              className="btn btn-primary"
-              onClick={() => setShowForm(!showForm)}
-            >
-              <Plus size={18} /> {showForm ? 'Cancelar' : 'Nuevo Vehículo'}
+            <button className="btn btn-primary" onClick={() => setShowForm(sf => !sf)}>
+              <Plus size={18}/>{' '}{showForm ? 'Cancelar' : 'Nuevo Vehículo'}
             </button>
           </div>
         </div>
 
-        {/* FORMULARIO */}
         {showForm && (
           <div className="card-body form-section">
             <form onSubmit={handleSubmit}>
@@ -229,9 +224,7 @@ const VehiculosView = ({ showNotification }) => {
                   >
                     <option value="">Seleccionar vendedor</option>
                     {vendedores.map(v => (
-                      <option key={v.idUsuario} value={v.idUsuario}>
-                        {v.nombre}
-                      </option>
+                      <option key={v.idUsuario} value={v.idUsuario}>{v.nombre}</option>
                     ))}
                   </select>
                 </div>
@@ -245,9 +238,7 @@ const VehiculosView = ({ showNotification }) => {
                   >
                     <option value="">Seleccionar marca</option>
                     {marcas.map(m => (
-                      <option key={m.idMarca} value={m.idMarca}>
-                        {m.nombre_marca}
-                      </option>
+                      <option key={m.idMarca} value={m.idMarca}>{m.nombre_marca}</option>
                     ))}
                   </select>
                 </div>
@@ -350,6 +341,15 @@ const VehiculosView = ({ showNotification }) => {
                     onChange={handleInputChange}
                   />
                 </div>
+                <div className="form-group">
+                  <label>Imágenes</label>
+                  <input
+                    type="file"
+                    name="imagenes"
+                    multiple
+                    onChange={handleFileChange}
+                  />
+                </div>
               </div>
               <div className="form-actions">
                 <button type="submit" className="btn btn-primary">
@@ -363,7 +363,6 @@ const VehiculosView = ({ showNotification }) => {
           </div>
         )}
 
-        {/* TABLA DE VEHÍCULOS */}
         <div className="table-responsive">
           <table className="table">
             <thead>
@@ -380,68 +379,41 @@ const VehiculosView = ({ showNotification }) => {
             </thead>
             <tbody>
               {paginatedVehiculos.length > 0 ? (
-                paginatedVehiculos.map((vehiculo) => (
-                  <tr key={vehiculo.idVehiculo}>
-                    <td>{vehiculo.idVehiculo}</td>
-                    <td>{getMarcaNombre(vehiculo.idMarca)}</td>
-                    <td>{vehiculo.modelo} {vehiculo.version && `(${vehiculo.version})`}</td>
-                    <td>{vehiculo.ano}</td>
-                    <td>{formatPrice(vehiculo.precio)}</td>
+                paginatedVehiculos.map(v => (
+                  <tr key={v.idVehiculo}>
+                    <td>{v.idVehiculo}</td>
+                    <td>{getMarcaNombre(v.idMarca)}</td>
+                    <td>{v.modelo}{v.version && ` (${v.version})`}</td>
+                    <td>{v.ano}</td>
+                    <td>{formatPrice(v.precio)}</td>
                     <td>
                       <span className={`badge ${
-                        vehiculo.estado === 'disponible' ? 'badge-success' :
-                        vehiculo.estado === 'reservado' ? 'badge-warning' :
-                        vehiculo.estado === 'vendido' ? 'badge-primary' : 'badge-secondary'
+                        v.estado === 'disponible' ? 'badge-success' :
+                        v.estado === 'reservado' ? 'badge-warning' :
+                        v.estado === 'vendido' ? 'badge-primary' : 'badge-secondary'
                       }`}>
-                        {vehiculo.estado.replace('_', ' ')}
+                        {v.estado}
                       </span>
                     </td>
-                    <td>{getVendedorNombre(vehiculo.idVendedor)}</td>
+                    <td>{getVendedorNombre(v.idVendedor)}</td>
                     <td className="actions">
-                      <button
-                        className="btn-icon btn-warning"
-                        onClick={() => handleEdit(vehiculo)}
-                        title="Editar"
-                      >
-                        <Edit size={16} />
-                      </button>
-                      <button
-                        className="btn-icon btn-danger"
-                        onClick={() => handleDelete(vehiculo.idVehiculo)}
-                        title="Eliminar"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      <button className="btn-icon btn-warning" onClick={() => handleEdit(v)} title="Editar"><Edit size={16}/></button>
+                      <button className="btn-icon btn-danger" onClick={() => handleDelete(v.idVehiculo)} title="Eliminar"><Trash2 size={16}/></button>
                     </td>
                   </tr>
                 ))
               ) : (
-                <tr>
-                  <td colSpan="8" className="no-results">
-                    No se encontraron vehículos
-                  </td>
-                </tr>
+                <tr><td colSpan="8" className="no-results">No se encontraron vehículos</td></tr>
               )}
             </tbody>
           </table>
         </div>
 
-        {/* Paginación */}
         {totalPages > 1 && (
           <div className="pagination">
-            <button
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-            >
-              Anterior
-            </button>
+            <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>Anterior</button>
             <span>Página {currentPage} de {totalPages}</span>
-            <button
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-            >
-              Siguiente
-            </button>
+            <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>Siguiente</button>
           </div>
         )}
       </div>

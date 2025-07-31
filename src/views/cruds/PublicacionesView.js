@@ -16,44 +16,87 @@ const PublicacionesView = ({ showNotification }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  // 🚀 Obtener datos desde la API
   useEffect(() => {
-    const mockVehiculos = [
-      { idVehiculo: 1, modelo: 'Corolla', marca: 'Toyota' },
-      { idVehiculo: 2, modelo: 'F-150', marca: 'Ford' }
-    ];
+    const fetchVehiculos = async () => {
+      try {
+        const res = await fetch('http://localhost:3000/api/catalogo/');
+        if (!res.ok) throw new Error('Error al cargar vehículos');
+        const data = await res.json();
+        console.log("Respuesta API /catalogo:", data);
 
-    const mockPublicaciones = [
-      {
-        idPublicacion: 1,
-        idVehiculo: 1,
-        descripcion: 'Excelente estado, único dueño, mantenimiento al día',
-        fecha: '2023-05-15'
-      },
-      {
-        idPublicacion: 2,
-        idVehiculo: 2,
-        descripcion: 'Truck en perfectas condiciones, lista para trabajar',
-        fecha: '2023-05-10'
+        // Si la API regresa un array directo o un objeto con { vehiculos: [] }
+        const vehiculosArray = Array.isArray(data) ? data : data.vehiculos || [];
+
+        // Armamos lista de vehículos (solo los campos necesarios)
+        const vehiculosApi = vehiculosArray.map(v => ({
+          idVehiculo: v.idVehiculo,
+          modelo: v.modelo,
+          marca: v.version || '' // usamos "version" como marca
+        }));
+
+        setVehiculos(vehiculosApi);
+
+        // Armamos publicaciones iniciales a partir de la API
+        const publicacionesApi = vehiculosArray.map((v, index) => ({
+          idPublicacion: index + 1,
+          idVehiculo: v.idVehiculo,
+          descripcion: v.descripcion,
+          fecha: new Date().toISOString().split('T')[0]
+        }));
+
+        setPublicaciones(publicacionesApi);
+        setFilteredPublicaciones(publicacionesApi);
+      } catch (error) {
+        console.error(error);
+        if (showNotification) {
+          showNotification('Error al cargar vehículos', 'error');
+        }
       }
-    ];
+    };
 
-    setVehiculos(mockVehiculos);
-    setPublicaciones(mockPublicaciones);
-    setFilteredPublicaciones(mockPublicaciones);
-  }, []);
+    fetchVehiculos();
+  }, [showNotification]);
 
-  useEffect(() => {
-    const filtered = publicaciones.filter(pub => {
-      const vehiculo = vehiculos.find(v => v.idVehiculo === pub.idVehiculo);
-      const vehiculoInfo = vehiculo ? `${vehiculo.marca} ${vehiculo.modelo}`.toLowerCase() : '';
-      return (
-        vehiculoInfo.includes(searchTerm.toLowerCase()) ||
-        pub.descripcion.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    });
-    setFilteredPublicaciones(filtered);
-    setCurrentPage(1);
-  }, [searchTerm, publicaciones, vehiculos]);
+  // 🔍 Filtrar publicaciones
+useEffect(() => {
+  const fetchVehiculos = async () => {
+    try {
+      const res = await fetch('http://localhost:3000/api/catalogo/');
+      if (!res.ok) throw new Error('Error al cargar vehículos');
+      const data = await res.json();
+      console.log("Respuesta API /catalogo:", data);
+
+      // Aquí la corrección para tu API que devuelve { success, data, message }
+      const vehiculosArray = Array.isArray(data.data) ? data.data : [];
+
+      const vehiculosApi = vehiculosArray.map(v => ({
+        idVehiculo: v.idVehiculo,
+        modelo: v.modelo,
+        marca: v.version || '', // usa version como "marca"
+      }));
+
+      setVehiculos(vehiculosApi);
+
+      const publicacionesApi = vehiculosArray.map((v, index) => ({
+        idPublicacion: index + 1,
+        idVehiculo: v.idVehiculo,
+        descripcion: v.descripcion,
+        fecha: new Date().toISOString().split('T')[0]
+      }));
+
+      setPublicaciones(publicacionesApi);
+      setFilteredPublicaciones(publicacionesApi);
+    } catch (error) {
+      console.error(error);
+      if (showNotification) {
+        showNotification('Error al cargar vehículos', 'error');
+      }
+    }
+  };
+
+  fetchVehiculos();
+}, [showNotification]);
 
   const paginatedPublicaciones = filteredPublicaciones.slice(
     (currentPage - 1) * itemsPerPage,

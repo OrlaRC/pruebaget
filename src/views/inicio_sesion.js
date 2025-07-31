@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { useHistory } from 'react-router-dom';
+import HeaderPrivado from './component/headerPrivado';
 import Footer from './component/footer';
 import Header from './component/header'; // Cambiar a Header (público)
 import './inicio_sesion.css';
@@ -8,50 +9,57 @@ import './inicio_sesion.css';
 const InicioSesion = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
   const history = useHistory();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
+    setErrorMsg('');
+
     if (!email || !password) {
-      alert('Por favor llena todos los campos');
+      setErrorMsg('⚠️ Por favor llena todos los campos');
       return;
     }
 
-    // Simulación de autenticación local
-    const magicPassword = '1234';
-    let idRol = 0;
+    setLoading(true);
+    try {
+      const res = await fetch('http://localhost:3000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
 
-    if (password === magicPassword) {
-      if (email === 'irving@gmail.com') {
-        idRol = 1; // Administrador
-      } else if (email === 'diego@gmail.com') {
-        idRol = 2; // Vendedor
-      } else if (email === 'angel@gmail.com') {
-        idRol = 3; // Cliente
-      } else {
-        idRol = 0; // No reconocido
+      const { data, message } = await res.json();
+      if (!res.ok) {
+        // Mensaje corregido para login fallido
+        setErrorMsg(message || '❌ Contraseña o correo incorrectos');
+        return;
       }
 
-      if (idRol > 0) {
-        // Guardar un token simulado en localStorage
-        const token = `simulated-token-${email}-${idRol}`;
-        localStorage.setItem('token', token);
-        // Opcional: Guardar el rol para usarlo en otras vistas
-        localStorage.setItem('idRol', idRol);
+      const { accessToken, refreshToken, user } = data;
 
-        if (idRol === 1) {
-          history.push('/dashboard');
-        } else if (idRol === 2) {
+      // Guardar tokens y usuario
+      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('refreshToken', refreshToken);
+      localStorage.setItem('user', JSON.stringify(user));
+
+      // Redirigir según rol
+      if (user.idRol === 1) {
+        history.push('/dashboard');
+        } else if (user.idRol === 2) {
           history.push('/dashboard-vendedor');
-        } else if (idRol === 3) {
+        } else if (user.idRol === 3) {
           history.push('/'); // Redirigir a la página principal para clientes
+        } else {
+          history.push('/');
         }
-        alert('Inicio de sesión exitoso');
-      } else {
-        alert('Correo no reconocido');
       }
-    } else {
-      alert('Contraseña incorrecta. Usa 1234');
+    catch (error) {
+      console.error(error);
+      setErrorMsg('❌ Error de conexión con el servidor.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -79,8 +87,8 @@ const InicioSesion = () => {
           </div>
         </section>
 
-        {/* Formulario */}
         <form className="desktop3-form-contact" onSubmit={handleLogin}>
+          {errorMsg && <p className="desktop3-error">{errorMsg}</p>}
           <div className="desktop3-input-field">
             <label htmlFor="email" className="desktop3-text40">Correo Electrónico</label>
             <input
@@ -105,13 +113,15 @@ const InicioSesion = () => {
               required
             />
           </div>
-          <button className="desktop3-button3" type="submit">
-            <span className="desktop3-text42">Confirmar</span>
+          <button className="desktop3-button3" type="submit" disabled={loading}>
+            <span className="desktop3-text42">
+              {loading ? 'Procesando...' : 'Confirmar'}
+            </span>
           </button>
           <button
             className="desktop3-button4"
             type="button"
-            onClick={() => alert('Integración con Google pendiente')}
+            onClick={() => window.location.href = 'http://localhost:3000/api/auth/google'}
           >
             <img
               src="/external/google1317054511267-rgmw-200h.png"
@@ -122,21 +132,10 @@ const InicioSesion = () => {
           </button>
         </form>
 
-        {/* Botones secundarios */}
         <div className="desktop3-actions">
           <div className="desktop3-secondary-buttons">
-            <button
-              className="desktop3-button2"
-              onClick={() => history.push('/')}
-            >
-              <span className="desktop3-text39">Regresa</span>
-            </button>
-            <button
-              className="desktop3-button1"
-              onClick={() => history.push('/registro')}
-            >
-              <span className="desktop3-text38">Regístrate</span>
-            </button>
+            <button className="desktop3-button2" onClick={() => history.push('/')}>Regresa</button>
+            <button className="desktop3-button1" onClick={() => history.push('/registro')}>Regístrate</button>
           </div>
         </div>
 

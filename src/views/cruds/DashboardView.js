@@ -1,36 +1,71 @@
 import React, { useState, useEffect } from 'react';
 import { useHistory } from 'react-router-dom';
 import {
-  User, Car, FileText, ShoppingCart,
-  Plus, Edit, Check, Clock
+  Car, FileText,
+  Plus, Edit, Check, Clock, Users
 } from 'lucide-react';
 import LayoutAdmin from '../layout/LayoutAdmin';
+import axios from 'axios';
 
 const DashboardView = ({ showNotification }) => {
   const [stats, setStats] = useState({
-    usuarios: 0,
+    vendedores: 0,
     vehiculos: 0,
-    publicaciones: 0,
-    ventas: 0
+    publicaciones: 0
   });
   const history = useHistory();
 
+  // Auth headers
+  const getAuthHeaders = (json = true) => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      showNotification?.('No autorizado. Por favor inicia sesión.', 'error');
+      history.push('/login');
+      return null;
+    }
+    return json
+      ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+      : { Authorization: `Bearer ${token}` };
+  };
+
   useEffect(() => {
-    // Simula carga de datos
-    setTimeout(() => {
-      setStats({
-        usuarios: 124,
-        vehiculos: 56,
-        publicaciones: 89,
-        ventas: 42
-      });
-      if (showNotification) {
-        showNotification('Estadísticas cargadas correctamente');
+    const fetchData = async () => {
+      const headers = getAuthHeaders(true);
+      if (!headers) return;
+
+      try {
+        // Fetch usuarios
+        const usuariosRes = await axios.get('http://localhost:3000/api/usuarios', { headers });
+        if (usuariosRes.data.success) {
+          const usuarios = usuariosRes.data.data;
+          const vendedores = usuarios.filter(u => u.idRol === 2).length;
+
+          // Fetch vehiculos
+          const vehiculosRes = await axios.get('http://localhost:3000/api/catalogo', { headers });
+          const vehiculosCount = vehiculosRes.data.success ? vehiculosRes.data.data.length : 0;
+
+          // Update stats
+          setStats({
+            vendedores,
+            vehiculos: vehiculosCount,
+            publicaciones: vehiculosCount
+          });
+
+          showNotification?.('Estadísticas cargadas correctamente');
+        } else {
+          throw new Error(usuariosRes.data.message || 'Error al cargar usuarios');
+        }
+      } catch (err) {
+        console.error('Error al cargar datos:', err);
+        showNotification?.('Error al cargar estadísticas', 'error');
       }
-    }, 500);
+    };
+
+    fetchData();
   }, [showNotification]);
 
   const handleLogout = () => {
+    localStorage.clear();
     history.push('/login');
   };
 
@@ -38,13 +73,16 @@ const DashboardView = ({ showNotification }) => {
     <LayoutAdmin>
       <div className="dashboard-container" style={{ minHeight: '100vh', position: 'relative' }}>
         <div className="dashboard-grid">
+
+          {/* Recuadro de Administradores eliminado */}
+
           <div className="metric-card">
             <div className="metric-header">
-              <h3>Total Usuarios</h3>
-              <User size={20} className="metric-icon" />
+              <h3>Vendedores</h3>
+              <Users size={20} className="metric-icon" />
             </div>
-            <p className="metric-value blue">{stats.usuarios}</p>
-            <p className="metric-change positive">+12% desde el mes pasado</p>
+            <p className="metric-value green">{stats.vendedores}</p>
+            <p className="metric-change positive">+0% desde el mes pasado</p>
           </div>
 
           <div className="metric-card">
@@ -63,15 +101,6 @@ const DashboardView = ({ showNotification }) => {
             </div>
             <p className="metric-value yellow">{stats.publicaciones}</p>
             <p className="metric-change negative">-2% desde el mes pasado</p>
-          </div>
-
-          <div className="metric-card">
-            <div className="metric-header">
-              <h3>Ventas</h3>
-              <ShoppingCart size={20} className="metric-icon" />
-            </div>
-            <p className="metric-value purple">{stats.ventas}</p>
-            <p className="metric-change positive">+8% desde el mes pasado</p>
           </div>
         </div>
 
@@ -114,12 +143,8 @@ const DashboardView = ({ showNotification }) => {
           </div>
         </div>
 
-        {/* Botón de cerrar sesión al fondo */}
         <div className="logout-section">
-          <button
-            className="logout-button"
-            onClick={handleLogout}
-          >
+          <button className="logout-button" onClick={handleLogout}>
             Cerrar Sesión
           </button>
         </div>

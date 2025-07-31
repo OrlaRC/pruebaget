@@ -1,10 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
-import { Link } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import Footer from './component/footer';
-import Header from './component/header';
-import HeaderPrivado from './component/headerPrivado';
+import Header from './component/header';  // Usamos solo este Header ahora
 import './home.css';
 
 const testimonials = [
@@ -12,23 +10,26 @@ const testimonials = [
     id: 1,
     image: "/external/testimonialimage1409-ki5c-300h.png",
     name: "Laura - 26 años",
-    text: "Después de ahorrar durante dos años, por fin compré mi primer auto. Es un modelo compacto, perfecto para moverme por la ciudad y visitar a mi familia los fines de semana. Me siento libre e independiente, y ya estoy planeando mi primer viaje por carretera.",
-    advisor: "Roberto Osvaldo Orea Mesta"
+    text:
+      "Después de ahorrar durante dos años, por fin compré mi primer auto. Es un modelo compacto, perfecto para moverme por la ciudad y visitar a mi familia los fines de semana. Me siento libre e independiente, y ya estoy planeando mi primer viaje por carretera.",
+    advisor: "Roberto Osvaldo Orea Mesta",
   },
   {
     id: 2,
     image: "/external/testimonialimage1414-4u1d-300h.png",
     name: "Miriam - 23 años",
-    text: "Soy ingeniera ambiental y desde hace tiempo quería un auto eléctrico. Finalmente lo compré, y me encanta. No solo contribuyo a cuidar el medio ambiente, sino que también ahorro mucho en gasolina. Me siento bien con mi decisión y la recomiendo a todos.",
-    advisor: "José Villa Rosales"
+    text:
+      "Soy ingeniera ambiental y desde hace tiempo quería un auto eléctrico. Finalmente lo compré, y me encanta. No solo contribuyo a cuidar el medio ambiente, sino que también ahorro mucho en gasolina. Me siento bien con mi decisión y la recomiendo a todos.",
+    advisor: "José Villa Rosales",
   },
   {
     id: 3,
     image: "/external/testimonialimage1420-252-300h.png",
     name: "José - 32 años",
-    text: "Hace poco cambié mi sedán por una camioneta más amplia. Tengo dos hijos y necesitábamos más espacio y comodidad para nuestros viajes. Me siento tranquilo sabiendo que ahora viajamos más seguros y cómodos. Fue una buena decisión para mi familia.",
-    advisor: "Alexis Rico Herrera"
-  }
+    text:
+      "Hace poco cambié mi sedán por una camioneta más amplia. Tengo dos hijos y necesitábamos más espacio y comodidad para nuestros viajes. Me siento tranquilo sabiendo que ahora viajamos más seguros y cómodos. Fue una buena decisión para mi familia.",
+    advisor: "Alexis Rico Herrera",
+  },
 ];
 
 const Home = () => {
@@ -38,46 +39,60 @@ const Home = () => {
   const [loadingBrands, setLoadingBrands] = useState(true);
   const [errorVehicles, setErrorVehicles] = useState(null);
   const [errorBrands, setErrorBrands] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
+  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('accessToken'));
+
+  const history = useHistory();
 
   useEffect(() => {
     // Actualizar isAuthenticated si el token cambia
     const checkAuth = () => {
-      setIsAuthenticated(!!localStorage.getItem('token'));
+      setIsAuthenticated(!!localStorage.getItem('accessToken'));
     };
     window.addEventListener('storage', checkAuth);
 
     // Fetch vehicles
-    fetch('http://localhost:3000/api/catalogo')
-      .then(res => res.json())
-      .then(json => {
+    fetch("http://localhost:3000/api/catalogo")
+      .then((res) => res.json())
+      .then((json) => {
         if (json.success) setVehicles(json.data);
-        else setErrorVehicles('Error al obtener vehículos');
+        else setErrorVehicles("Error al obtener vehículos");
       })
-      .catch(() => setErrorVehicles('Error de red al cargar vehículos'))
+      .catch(() => setErrorVehicles("Error de red al cargar vehículos"))
       .finally(() => setLoadingVehicles(false));
 
     // Fetch brands
-    fetch('http://localhost:3000/api/marcas')
-      .then(res => res.json())
-      .then(json => {
+    fetch("http://localhost:3000/api/marcas")
+      .then((res) => res.json())
+      .then((json) => {
         if (json.success) setBrands(json.data);
-        else setErrorBrands('Error al obtener marcas');
+        else setErrorBrands("Error al obtener marcas");
       })
-      .catch(() => setErrorBrands('Error de red al cargar marcas'))
+      .catch(() => setErrorBrands("Error de red al cargar marcas"))
       .finally(() => setLoadingBrands(false));
 
     return () => window.removeEventListener('storage', checkAuth);
   }, []);
 
+  const handleLogout = () => {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("user");
+    setIsAuthenticated(false);
+    history.push("/");
+  };
+
   return (
     <div className="desktop-container">
       <Helmet>
         <title>Cars Get Financiamiento - Compra tu auto ideal</title>
-        <meta name="description" content="Encuentra el auto perfecto con nuestro financiamiento flexible y tasas competitivas" />
+        <meta
+          name="description"
+          content="Encuentra el auto perfecto con nuestro financiamiento flexible y tasas competitivas"
+        />
       </Helmet>
 
-      {isAuthenticated ? <HeaderPrivado /> : <Header />}
+      {/* Solo Header, que internamente maneja el menú según login */}
+      <Header />
 
       <main>
         {/* Barra de búsqueda */}
