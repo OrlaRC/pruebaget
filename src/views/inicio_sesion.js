@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { useHistory } from 'react-router-dom';
 import Footer from './component/footer';
+import Header from './component/header'; // Cambiar a Header (público)
 import './inicio_sesion.css';
-import HeaderPrivado from './component/headerPrivado';
 
 const InicioSesion = () => {
   const [email, setEmail] = useState('');
@@ -26,15 +26,25 @@ const InicioSesion = () => {
         idRol = 1; // Administrador
       } else if (email === 'diego@gmail.com') {
         idRol = 2; // Vendedor
+      } else if (email === 'angel@gmail.com') {
+        idRol = 3; // Cliente
       } else {
-        idRol = 3; // Usuario genérico (puedes ajustarlo)
+        idRol = 0; // No reconocido
       }
 
       if (idRol > 0) {
+        // Guardar un token simulado en localStorage
+        const token = `simulated-token-${email}-${idRol}`;
+        localStorage.setItem('token', token);
+        // Opcional: Guardar el rol para usarlo en otras vistas
+        localStorage.setItem('idRol', idRol);
+
         if (idRol === 1) {
           history.push('/dashboard');
         } else if (idRol === 2) {
           history.push('/dashboard-vendedor');
+        } else if (idRol === 3) {
+          history.push('/'); // Redirigir a la página principal para clientes
         }
         alert('Inicio de sesión exitoso');
       } else {
@@ -52,7 +62,7 @@ const InicioSesion = () => {
       </Helmet>
 
       <div className="desktop3-desktop">
-        <HeaderPrivado />
+        <Header /> {/* Usar Header público */}
 
         {/* Logo grande */}
         <section className="desktop3-group5">

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
 import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
@@ -22,8 +23,10 @@ import NotFound from './views/not-found';
 import VistaMarca from './views/vistaMarca';
 import SubtipoVista from './views/subtipoVista';
 import SolicitudForm from './views/formulario/SolicitudForm';
+import Perfil from './views/perfil'; // Vista de perfil
+import PrivateRoute from './views/component/PrivateRoute'; // Importar PrivateRoute
 
-
+// Vistas de administración
 import AuditoriaView from './views/cruds/AuditoriaView';
 import DashboardView from './views/cruds/DashboardView';
 import ImagenesView from './views/cruds/ImagenesView';
@@ -33,7 +36,6 @@ import SettingsView from './views/cruds/SettingsView';
 import UsuariosView from './views/cruds/UsuariosView';
 import VehiculosView from './views/cruds/VehiculosView';
 import FinanciamientoView from './views/crud-vendedor/FinanciamientoView';
-
 import PublicacionesViewVendedor from './views/crud-vendedor/PublicacionesViewVendedor';
 import SettingsViewVendedor from './views/crud-vendedor/SettingsViewVendedor';
 import VehiculosViewVendedor from './views/crud-vendedor/VehiculosViewVendedor';
@@ -71,7 +73,7 @@ const App = () => {
             <Route exact path="/registro" component={Registro} />
             <Route exact path="/cotizacion" component={Cotizacion} />
             <Route exact path="/solicitud-credito" component={SolicitudForm} />
-            
+            <PrivateRoute exact path="/perfil" component={Perfil} />
             <Route exact path="/marca/:idMarca" component={VistaMarca} />
             <Route exact path="/subtipo/:tipo" component={SubtipoVista} />
             <Route exact path="/auditoria" component={AuditoriaView} />

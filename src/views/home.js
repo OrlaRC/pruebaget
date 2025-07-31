@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
 import { Link } from 'react-router-dom';
 import Footer from './component/footer';
 import Header from './component/header';
+import HeaderPrivado from './component/headerPrivado';
 import './home.css';
 
 const testimonials = [
@@ -29,15 +31,22 @@ const testimonials = [
   }
 ];
 
-const Desktop = () => {
+const Home = () => {
   const [vehicles, setVehicles] = useState([]);
   const [brands, setBrands] = useState([]);
   const [loadingVehicles, setLoadingVehicles] = useState(true);
   const [loadingBrands, setLoadingBrands] = useState(true);
   const [errorVehicles, setErrorVehicles] = useState(null);
   const [errorBrands, setErrorBrands] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
 
   useEffect(() => {
+    // Actualizar isAuthenticated si el token cambia
+    const checkAuth = () => {
+      setIsAuthenticated(!!localStorage.getItem('token'));
+    };
+    window.addEventListener('storage', checkAuth);
+
     // Fetch vehicles
     fetch('http://localhost:3000/api/catalogo')
       .then(res => res.json())
@@ -57,6 +66,8 @@ const Desktop = () => {
       })
       .catch(() => setErrorBrands('Error de red al cargar marcas'))
       .finally(() => setLoadingBrands(false));
+
+    return () => window.removeEventListener('storage', checkAuth);
   }, []);
 
   return (
@@ -66,18 +77,13 @@ const Desktop = () => {
         <meta name="description" content="Encuentra el auto perfecto con nuestro financiamiento flexible y tasas competitivas" />
       </Helmet>
 
-      <Header />
+      {isAuthenticated ? <HeaderPrivado /> : <Header />}
 
       <main>
         {/* Barra de búsqueda */}
         <section className="search-section">
           <h2 className="search-title">Encuentra exactamente lo que buscas</h2>
           <div className="search-container">
-            <div className="search-bar1">
-              <img src="/external/search24dp000000fill0wght400grad0opsz2411564-sok-200h.png" alt="Buscar" />
-              <input type="text" placeholder="Busca por marca" />
-              <img src="/external/xi156-w54t.svg" alt="Limpiar búsqueda" />
-            </div>
             <div className="search-filters">
               <Link to="/subtipo/SUV" className="filter-button">SUV</Link>
               <Link to="/subtipo/VAN" className="filter-button">VAN</Link>
@@ -91,10 +97,8 @@ const Desktop = () => {
         {/* Logos de marcas dinámicos */}
         <section className="brands-section">
           <h2 className="section-title">¡DESCUBRE NUESTRO CATÁLOGO AQUÍ!</h2>
-
           {loadingBrands && <p>Cargando marcas...</p>}
           {errorBrands && <p className="error-message">{errorBrands}</p>}
-
           {!loadingBrands && !errorBrands && (
             <div className="brands-grid">
               {brands.map((brand) => (
@@ -118,22 +122,19 @@ const Desktop = () => {
                   <img src={vehicle.imagenes[0]} alt={`${vehicle.modelo} ${vehicle.version}`} />
                   <p className="vehicle-model">{vehicle.modelo} {vehicle.version} ({vehicle.ano})</p>
                   <p className="vehicle-price">${Number(vehicle.precio).toLocaleString()}</p>
-                 <button
-  className="mas-info-btn"
-  onClick={() => {
-    window.location.href = `/info-auto?idVehiculo=${vehicle.idVehiculo}`;
-  }}
->
-  Más información
-</button>
-
-
+                  <button
+                    className="mas-info-btn"
+                    onClick={() => {
+                      window.location.href = `/info-auto?idVehiculo=${vehicle.idVehiculo}`;
+                    }}
+                  >
+                    Más información
+                  </button>
                 </div>
               ))}
             </div>
           )}
         </section>
-
 
         {/* Testimonios */}
         <section className="testimonials-section">
@@ -188,4 +189,4 @@ const Desktop = () => {
   );
 };
 
-export default Desktop;
+export default Home;

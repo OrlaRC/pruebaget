@@ -1,17 +1,29 @@
-import React from 'react'
-import { Helmet } from 'react-helmet'
+import React, { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet';
 import Header from './component/header';
+import HeaderPrivado from './component/headerPrivado';
 import Footer from './component/footer';
-import './contacto.css'
+import './contacto.css';
 
-const Desktop5 = () => {
+const Contacto = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
+
+  useEffect(() => {
+    const checkAuth = () => {
+      setIsAuthenticated(!!localStorage.getItem('token'));
+    };
+    window.addEventListener('storage', checkAuth);
+    return () => window.removeEventListener('storage', checkAuth);
+  }, []);
+
   return (
     <div className="desktop5-container">
       <Helmet>
         <title>Trabaja con Nosotros - CARS GET</title>
+        <meta name="description" content="Únete al equipo de Cars Get y descubre oportunidades laborales" />
       </Helmet>
 
-      <Header />
+      {isAuthenticated ? <HeaderPrivado /> : <Header />}
 
       {/* TÍTULO PRINCIPAL */}
       <h1 className="desktop5-text10">¿QUIERES SER PARTE DEL EQUIPO?</h1>
@@ -40,10 +52,9 @@ const Desktop5 = () => {
         </div>
       </section>
 
-
       <Footer />
     </div>
-  )
-}
+  );
+};
 
-export default Desktop5
+export default Contacto;
