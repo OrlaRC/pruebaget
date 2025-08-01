@@ -128,21 +128,19 @@ body, html {
   position: relative;
   flex: 1 1 60%;
   max-width: 800px;
-
-  width: 600px;   /* tamaño fijo */
-  height: 400px;  /* tamaño fijo */
-
+  width: 600px; /* tamaño fijo */
+  height: 400px; /* tamaño fijo */
   display: flex;
   justify-content: center;
   align-items: center;
   overflow: hidden;
-  border-radius: 20px; /* coincide con el border-radius de las imágenes */
+  border-radius: 20px;
 }
 
 /* Fondo translúcido (recuadro transparente) */
 .imagen-principal img:first-child {
   position: absolute;
-  top: 0; 
+  top: 0;
   left: 0;
   width: 100%;
   height: 100%;
@@ -241,39 +239,66 @@ body, html {
 }
 
 .galeria-otros {
-  width: 100%;
-  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 24px;
   max-width: 1200px;
+  margin: 0 auto;
 }
 
-.vehiculo-slide {
-  padding: 0 0.5cm; /* separación lateral: 1cm total entre imágenes */
-  display: flex !important;
-  justify-content: center;
-  box-sizing: border-box;
+.producto {
+  background: #fff;
+  border-radius: 32px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  transition: transform 0.2s ease;
+  height: 100%;
 }
 
-.vehiculo-slide img {
-  width: 160px;
-  height: 100px;
+.producto:hover {
+  transform: translateY(-5px);
+}
+
+.producto img {
+  width: 100%;
+  height: 180px;
   object-fit: cover;
+  border-radius: 16px;
+}
+
+.producto .marca,
+.producto .precio,
+.producto .año {
+  font-size: 16px;
+  margin-top: 8px;
+}
+
+.producto .año {
+  font-size: 14px;
+  color: #555;
+}
+
+.producto .precio {
+  font-weight: bold;
+}
+
+.producto .mas-info {
+  margin-top: auto;
+  background: var(--color-primario);
+  padding: 6px 12px;
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s ease;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s ease;
 }
 
-.vehiculo-slide img:hover {
-  transform: scale(1.05);
-}
-
-.slick-dots li button:before {
-  font-size: 10px;
-  color: #000;
-}
-
-.slick-prev,
-.slick-next {
-  z-index: 1;
+.producto .mas-info:hover {
+  background: #e56a0f;
 }
 
 /* Responsive */
@@ -291,5 +316,15 @@ body, html {
 
   .busqueda input {
     width: 100px;
+  }
+
+  .galeria-otros {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .galeria-otros {
+    grid-template-columns: 1fr;
   }
 }
