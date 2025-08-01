@@ -69,12 +69,16 @@ const VistaMarca = () => {
       <Header />
       <div
         className="vista-marca-container"
-        style={{ paddingLeft: '40px', paddingBottom: '40px' }}
+        style={{
+          /* padding: top right&left bottom */
+          padding: '0 40px 40px'
+        }}
       >
         <h1
           className="vista-marca-title"
           style={{ marginBottom: '32px', textAlign: 'left' }}
         >
+          <br></br>
           Vehículos de {nombreMarca}
         </h1>
 

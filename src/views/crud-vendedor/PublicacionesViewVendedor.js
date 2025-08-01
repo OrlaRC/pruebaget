@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef, useContext } from 'react';
+import React, { useState, useEffect, useRef, useContext, useCallback } from 'react';
 import { Search, Plus, Edit, Trash2, Upload, XCircle } from 'lucide-react';
 import LayoutVendedor from '../layout/LayoutVendedor';
 import { NotificationContext } from '../../context/NotificationContext';
 import { useHistory } from 'react-router-dom';
+import debounce from 'lodash/debounce';
 
 const PublicacionesViewVendedor = () => {
   const [publicaciones, setPublicaciones] = useState([]);
@@ -23,7 +24,7 @@ const PublicacionesViewVendedor = () => {
     estado: 'disponible',
     tipoCombustible: 'gasolina',
     transmision: 'manual',
-    imagenes: []
+    imagenes: [],
   });
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -32,39 +33,46 @@ const PublicacionesViewVendedor = () => {
   const fileInputRef = useRef(null);
   const itemsPerPage = 10;
   const history = useHistory();
-
   const { showNotification } = useContext(NotificationContext);
+  const shownNotifications = useRef(new Set());
 
-  useEffect(() => {
-    const userData = JSON.parse(localStorage.getItem('user'));
-    if (!userData || userData.idRol !== 2) {
-      showNotification('Acceso no autorizado. Debes ser vendedor.', 'error');
-      history.push('/inicio-sesion');
-      return;
-    }
-    setUser(userData);
-    setFormData(prev => ({ ...prev, idVendedor: userData.idUsuario }));
-  }, [history, showNotification]);
+  const debouncedShowNotification = useCallback(
+    debounce((message, type) => {
+      const notificationKey = `${message}-${type}`;
+      if (!shownNotifications.current.has(notificationKey)) {
+        showNotification(message, type);
+        shownNotifications.current.add(notificationKey);
+        setTimeout(() => shownNotifications.current.delete(notificationKey), 5000);
+      }
+    }, 500),
+    [showNotification]
+  );
 
   const getAccessToken = async () => {
     let accessToken = localStorage.getItem('accessToken');
-    const refreshToken = localStorage.getItem('refreshToken');
-
-    if (!accessToken && refreshToken) {
+    if (!accessToken) {
+      const refreshToken = localStorage.getItem('refreshToken');
+      if (!refreshToken) {
+        debouncedShowNotification('No autorizado. Por favor inicia sesión.', 'error');
+        history.push('/inicio-sesion');
+        return null;
+      }
       try {
         const res = await fetch('http://localhost:3000/api/auth/refresh', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refreshToken })
+          body: JSON.stringify({ refreshToken }),
         });
-        const { data } = await res.json();
-        if (res.ok) {
+        if (!res.ok) throw new Error('Error en la respuesta del servidor');
+        const data = await res.json();
+        if (data.success) {
           accessToken = data.accessToken;
           localStorage.setItem('accessToken', accessToken);
         } else {
-          throw new Error('Failed to refresh token');
+          throw new Error(data.message || 'No se pudo refrescar el token');
         }
       } catch (error) {
+        debouncedShowNotification('Error de autenticación. Inicia sesión nuevamente.', 'error');
         localStorage.clear();
         history.push('/inicio-sesion');
         return null;
@@ -73,57 +81,58 @@ const PublicacionesViewVendedor = () => {
     return accessToken;
   };
 
-  const fetchMarcas = async () => {
-    try {
+  useEffect(() => {
+    const userData = JSON.parse(localStorage.getItem('user'));
+    if (!userData || userData.idRol !== 2) {
+      debouncedShowNotification('Acceso no autorizado. Debes ser vendedor.', 'error');
+      history.push('/inicio-sesion');
+      return;
+    }
+    setUser(userData);
+    setFormData((prev) => ({ ...prev, idVendedor: userData.idUsuario }));
+
+    const fetchInitialData = async () => {
       const accessToken = await getAccessToken();
       if (!accessToken) return;
 
-      const res = await fetch('http://localhost:3000/api/marcas', {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
-      const { success, data } = await res.json();
-      if (success) {
-        setMarcas(data);
-      } else {
-        throw new Error('Failed to fetch marcas');
-      }
-    } catch (error) {
-      showNotification('Error al cargar marcas', 'error');
-    }
-  };
+      try {
+        const marcasRes = await fetch('http://localhost:3000/api/marcas', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (!marcasRes.ok) throw new Error('Error al cargar marcas');
+        const marcasData = await marcasRes.json();
+        if (marcasData.success) {
+          setMarcas(marcasData.data);
+        } else {
+          throw new Error(marcasData.message || 'No se pudieron cargar las marcas');
+        }
 
-  const fetchPublicaciones = async () => {
-    try {
-      const accessToken = await getAccessToken();
-      if (!accessToken || !user) return;
-
-      const res = await fetch('http://localhost:3000/api/catalogo', {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
-      const { success, data } = await res.json();
-      if (success) {
-        // Filter publications to show only those belonging to the logged-in vendor
-        const userPublicaciones = data.filter(pub => pub.idVendedor === user.idUsuario);
-        setPublicaciones(userPublicaciones);
-        setFilteredPublicaciones(userPublicaciones);
-      } else {
-        throw new Error('Failed to fetch publicaciones');
+        const publicacionesRes = await fetch('http://localhost:3000/api/catalogo', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (!publicacionesRes.ok) throw new Error('Error al cargar publicaciones');
+        const publicacionesData = await publicacionesRes.json();
+        if (publicacionesData.success) {
+          const userPublicaciones = publicacionesData.data.filter(
+            (pub) => pub.idVendedor === userData.idUsuario
+          );
+          setPublicaciones(userPublicaciones);
+          setFilteredPublicaciones(userPublicaciones);
+        } else {
+          throw new Error(publicacionesData.message || 'No se pudieron cargar las publicaciones');
+        }
+      } catch (error) {
+        debouncedShowNotification(`Error al cargar datos: ${error.message}`, 'error');
       }
-    } catch (error) {
-      showNotification('Error al cargar publicaciones', 'error');
-    }
-  };
+    };
+
+    fetchInitialData();
+  }, [history]);
 
   useEffect(() => {
-    if (user) {
-      fetchMarcas();
-      fetchPublicaciones();
-    }
-  }, [user]);
-
-  useEffect(() => {
-    const filtered = publicaciones.filter(pub => {
-      const info = `${pub.modelo} ${pub.version}`.toLowerCase();
+    const filtered = publicaciones.filter((pub) => {
+      const marca = marcas.find((m) => m.idMarca === pub.idMarca)?.nombre_marca || '';
+      const info = `${marca} ${pub.modelo} ${pub.version} ${pub.ano}`.toLowerCase();
       return (
         info.includes(searchTerm.toLowerCase()) ||
         pub.descripcion.toLowerCase().includes(searchTerm.toLowerCase())
@@ -131,7 +140,7 @@ const PublicacionesViewVendedor = () => {
     });
     setFilteredPublicaciones(filtered);
     setCurrentPage(1);
-  }, [searchTerm, publicaciones]);
+  }, [searchTerm, publicaciones, marcas]);
 
   const paginatedPublicaciones = filteredPublicaciones.slice(
     (currentPage - 1) * itemsPerPage,
@@ -140,140 +149,204 @@ const PublicacionesViewVendedor = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: name === 'precio' ? parseInt(value) || '' : value });
+    setFormData((prev) => ({
+      ...prev,
+      [name]: name === 'precio' || name === 'kilometraje' || name === 'ano' ? parseFloat(value) || '' : value,
+    }));
   };
 
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
-    if (files.length !== 5) {
-      showNotification('Debe seleccionar exactamente 5 imágenes', 'error');
+    const currentImageCount = formData.imagenes.length;
+    const maxNewImages = 5 - currentImageCount;
+
+    if (files.length > maxNewImages) {
+      debouncedShowNotification(`Solo puedes subir hasta ${maxNewImages} imagen(es) adicional(es)`, 'error');
       return;
     }
 
-    const valid = files.filter(f => {
+    const validFiles = files.filter((f) => {
       if (!f.type.includes('image/')) {
-        showNotification(`${f.name} no es una imagen válida`, 'error');
+        debouncedShowNotification(`${f.name} no es una imagen válida`, 'error');
         return false;
       }
       if (f.size > 5 * 1024 * 1024) {
-        showNotification(`${f.name} excede los 5MB`, 'error');
+        debouncedShowNotification(`${f.name} excede los 5MB`, 'error');
         return false;
       }
       return true;
     });
 
-    if (valid.length !== 5) {
-      showNotification('Todas las imágenes deben ser válidas', 'error');
+    if (validFiles.length !== files.length) {
+      debouncedShowNotification('Algunas imágenes no son válidas', 'error');
       return;
     }
 
-    setUploading(true);
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      imagenes: valid // Store actual File objects
+      imagenes: [...prev.imagenes, ...validFiles],
     }));
-    setUploading(false);
-    showNotification('Imágenes seleccionadas con éxito');
   };
 
-  const removeImage = (i) => {
-    showNotification('No se puede eliminar imágenes, debe mantener exactamente 5', 'error');
+  const removeImage = (index) => {
+    setFormData((prev) => {
+      const newImages = [...prev.imagenes];
+      newImages.splice(index, 1);
+      return { ...prev, imagenes: newImages };
+    });
+    debouncedShowNotification(
+      `Imagen eliminada. ${formData.imagenes.length - 1}/5 imágenes restantes.`,
+      'warning'
+    );
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (formData.imagenes.length !== 5) {
-      showNotification('Debe subir exactamente 5 imágenes', 'error');
+      debouncedShowNotification(`Debes tener exactamente 5 imágenes para guardar la publicación`, 'error');
       return;
     }
 
-    try {
-      const accessToken = await getAccessToken();
-      if (!accessToken) return;
+    const accessToken = await getAccessToken();
+    if (!accessToken) return;
 
-      const formDataToSend = new FormData();
-      Object.keys(formData).forEach(key => {
-        if (key === 'imagenes') {
-          formData.imagenes.forEach((file, index) => {
-            formDataToSend.append('imagenes', file);
-          });
-        } else {
-          formDataToSend.append(key, formData[key]);
+    const formDataToSend = new FormData();
+    Object.entries(formData).forEach(([key, value]) => {
+      if (key === 'imagenes') {
+        const newFiles = value.filter((img) => img instanceof File);
+        newFiles.forEach((file) => formDataToSend.append('imagenes', file));
+        const existingUrls = value.filter((img) => typeof img === 'string');
+        if (existingUrls.length > 0) {
+          formDataToSend.append('existingImages', JSON.stringify(existingUrls));
         }
-      });
+      } else {
+        formDataToSend.append(key, value);
+      }
+    });
 
+    try {
       setUploading(true);
       let res;
       if (editingId) {
         res = await fetch(`http://localhost:3000/api/catalogo/${editingId}`, {
           method: 'PUT',
           headers: { Authorization: `Bearer ${accessToken}` },
-          body: formDataToSend
+          body: formDataToSend,
         });
       } else {
         res = await fetch('http://localhost:3000/api/catalogo', {
           method: 'POST',
           headers: { Authorization: `Bearer ${accessToken}` },
-          body: formDataToSend
+          body: formDataToSend,
         });
       }
 
-      const { success, message } = await res.json();
-      if (success) {
-        showNotification(editingId ? 'Publicación actualizada correctamente' : 'Publicación creada correctamente');
-        fetchPublicaciones();
+      if (!res.ok) throw new Error('Error en la respuesta del servidor');
+      const data = await res.json();
+      if (data.success) {
+        debouncedShowNotification(
+          editingId ? 'Publicación actualizada correctamente' : 'Publicación creada correctamente',
+          'success'
+        );
+        const publicacionesRes = await fetch('http://localhost:3000/api/catalogo', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (publicacionesRes.ok) {
+          const publicacionesData = await publicacionesRes.json();
+          if (publicacionesData.success) {
+            const userPublicaciones = publicacionesData.data.filter(
+              (pub) => pub.idVendedor === user.idUsuario
+            );
+            setPublicaciones(userPublicaciones);
+            setFilteredPublicaciones(userPublicaciones);
+          }
+        }
         resetForm();
       } else {
-        throw new Error(message || 'Error al guardar publicación');
+        throw new Error(data.message || 'Error al guardar publicación');
       }
     } catch (error) {
-      showNotification(error.message || 'Error al guardar publicación', 'error');
+      debouncedShowNotification(`Error al guardar publicación: ${error.message}`, 'error');
     } finally {
       setUploading(false);
     }
   };
 
-  const handleEdit = (pub) => {
-    setFormData({
-      idVendedor: user.idUsuario, // Always use the logged-in user's ID
-      idMarca: pub.idMarca,
-      modelo: pub.modelo,
-      version: pub.version,
-      ano: pub.ano,
-      kilometraje: pub.kilometraje,
-      precio: pub.precio,
-      caracteristicas: pub.caracteristicas,
-      descripcion: pub.descripcion,
-      estado: pub.estado,
-      tipoCombustible: pub.tipoCombustible,
-      transmision: pub.transmision,
-      imagenes: [] // Images will need to be re-uploaded
-    });
-    setEditingId(pub.idPublicacion);
-    setShowForm(true);
+  const handleEdit = async (pub) => {
+    if (!pub || (!pub.idVehiculo && !pub.idPublicacion)) {
+      debouncedShowNotification('No se puede editar: publicación inválida', 'error');
+      return;
+    }
+    const accessToken = await getAccessToken();
+    if (!accessToken) return;
+    try {
+      const id = pub.idVehiculo || pub.idPublicacion;
+      const res = await fetch(`http://localhost:3000/api/catalogo/${id}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!res.ok) throw new Error('Error en la respuesta del servidor');
+      const data = await res.json();
+      if (data.success) {
+        setFormData({
+          idVendedor: user.idUsuario,
+          idMarca: data.data.idMarca || '',
+          modelo: data.data.modelo || '',
+          version: data.data.version || '',
+          ano: data.data.ano || '',
+          kilometraje: data.data.kilometraje || '',
+          precio: data.data.precio || '',
+          caracteristicas: data.data.caracteristicas || '',
+          descripcion: data.data.descripcion || '',
+          estado: data.data.estado || 'disponible',
+          tipoCombustible: data.data.tipoCombustible || 'gasolina',
+          transmision: data.data.transmision || 'manual',
+          imagenes: data.data.imagenes || [],
+        });
+        setEditingId(id);
+        setShowForm(true);
+      } else {
+        throw new Error(data.message || 'No se pudieron cargar los datos de la publicación');
+      }
+    } catch (error) {
+      debouncedShowNotification(`Error al cargar datos de la publicación: ${error.message}`, 'error');
+    }
   };
 
   const handleDelete = async (id) => {
+    if (!id) {
+      debouncedShowNotification('No se puede eliminar: ID inválido', 'error');
+      return;
+    }
     if (!window.confirm('¿Eliminar publicación?')) return;
-
+    const accessToken = await getAccessToken();
+    if (!accessToken) return;
     try {
-      const accessToken = await getAccessToken();
-      if (!accessToken) return;
-
       const res = await fetch(`http://localhost:3000/api/catalogo/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${accessToken}` }
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
-
-      const { success, message } = await res.json();
-      if (success) {
-        showNotification('Publicación eliminada correctamente');
-        fetchPublicaciones();
+      if (!res.ok) throw new Error('Error en la respuesta del servidor');
+      const data = await res.json();
+      if (data.success) {
+        debouncedShowNotification('Publicación eliminada correctamente', 'success');
+        const publicacionesRes = await fetch('http://localhost:3000/api/catalogo', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (publicacionesRes.ok) {
+          const publicacionesData = await publicacionesRes.json();
+          if (publicacionesData.success) {
+            const userPublicaciones = publicacionesData.data.filter(
+              (pub) => pub.idVendedor === user.idUsuario
+            );
+            setPublicaciones(userPublicaciones);
+            setFilteredPublicaciones(userPublicaciones);
+          }
+        }
       } else {
-        throw new Error(message || 'Error al eliminar publicación');
+        throw new Error(data.message || 'Error al eliminar publicación');
       }
     } catch (error) {
-      showNotification(error.message || 'Error al eliminar publicación', 'error');
+      debouncedShowNotification(`Error al eliminar publicación: ${error.message}`, 'error');
     }
   };
 
@@ -291,14 +364,15 @@ const PublicacionesViewVendedor = () => {
       estado: 'disponible',
       tipoCombustible: 'gasolina',
       transmision: 'manual',
-      imagenes: []
+      imagenes: [],
     });
     setEditingId(null);
     setShowForm(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const getVehiculoInfo = (pub) => {
-    const marca = marcas.find(m => m.idMarca === pub.idMarca);
+    const marca = marcas.find((m) => m.idMarca === pub.idMarca);
     return `${marca ? marca.nombre_marca : 'Desconocida'} ${pub.modelo} (${pub.version}) - ${pub.ano}`;
   };
 
@@ -313,7 +387,7 @@ const PublicacionesViewVendedor = () => {
   const totalPages = Math.ceil(filteredPublicaciones.length / itemsPerPage);
 
   if (!user) {
-    return null; // Prevent rendering until user is loaded
+    return null;
   }
 
   return (
@@ -331,10 +405,7 @@ const PublicacionesViewVendedor = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <button
-              className="btn btn-primary"
-              onClick={() => setShowForm(!showForm)}
-            >
+            <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
               <Plus size={18} /> {showForm ? 'Cancelar' : 'Nueva Publicación'}
             </button>
           </div>
@@ -344,7 +415,6 @@ const PublicacionesViewVendedor = () => {
           <div className="card-body form-section">
             <form onSubmit={handleSubmit}>
               <div className="form-grid">
-                {/* Display vendor as read-only */}
                 <div className="form-group">
                   <label>Vendedor *</label>
                   <input
@@ -353,23 +423,14 @@ const PublicacionesViewVendedor = () => {
                     readOnly
                     className="form-control"
                   />
-                  <input
-                    type="hidden"
-                    name="idVendedor"
-                    value={formData.idVendedor}
-                  />
+                  <input type="hidden" name="idVendedor" value={formData.idVendedor} />
                 </div>
 
                 <div className="form-group">
                   <label>Marca *</label>
-                  <select
-                    name="idMarca"
-                    value={formData.idMarca}
-                    onChange={handleInputChange}
-                    required
-                  >
+                  <select name="idMarca" value={formData.idMarca} onChange={handleInputChange} required>
                     <option value="">Seleccionar marca</option>
-                    {marcas.map(m => (
+                    {marcas.map((m) => (
                       <option key={m.idMarca} value={m.idMarca}>
                         {m.nombre_marca}
                       </option>
@@ -433,7 +494,7 @@ const PublicacionesViewVendedor = () => {
                     onChange={handleInputChange}
                     required
                     min="0"
-                    step="1"
+                    step="0.01"
                   />
                 </div>
 
@@ -461,12 +522,7 @@ const PublicacionesViewVendedor = () => {
 
                 <div className="form-group">
                   <label>Estado *</label>
-                  <select
-                    name="estado"
-                    value={formData.estado}
-                    onChange={handleInputChange}
-                    required
-                  >
+                  <select name="estado" value={formData.estado} onChange={handleInputChange} required>
                     <option value="disponible">Disponible</option>
                     <option value="no_disponible">No Disponible</option>
                     <option value="vendido">Vendido</option>
@@ -505,7 +561,7 @@ const PublicacionesViewVendedor = () => {
                 </div>
 
                 <div className="form-group span-2">
-                  <label>Imágenes del vehículo (Exactamente 5)</label>
+                  <label>Imágenes del vehículo (Exactamente 5 al guardar)</label>
                   <input
                     type="file"
                     ref={fileInputRef}
@@ -519,7 +575,7 @@ const PublicacionesViewVendedor = () => {
                       type="button"
                       className="btn btn-secondary"
                       onClick={triggerFileInput}
-                      disabled={uploading || formData.imagenes.length === 5}
+                      disabled={uploading || formData.imagenes.length >= 5}
                     >
                       {uploading ? (
                         'Subiendo...'
@@ -529,7 +585,7 @@ const PublicacionesViewVendedor = () => {
                         </>
                       )}
                     </button>
-                    <small>Formatos aceptados: JPG, PNG (max 5MB cada una, exactamente 5 imágenes)</small>
+                    <small>Formatos aceptados: JPG, PNG (max 5MB cada una, exactamente 5 al guardar)</small>
                   </div>
 
                   {formData.imagenes.length > 0 && (
@@ -538,7 +594,7 @@ const PublicacionesViewVendedor = () => {
                         {formData.imagenes.map((img, index) => (
                           <div key={index} className="image-preview-item">
                             <img
-                              src={URL.createObjectURL(img)}
+                              src={typeof img === 'string' ? img : URL.createObjectURL(img)}
                               alt={`Vehículo ${index + 1}`}
                               className="image-preview-thumbnail"
                             />
@@ -559,19 +615,10 @@ const PublicacionesViewVendedor = () => {
                 </div>
               </div>
               <div className="form-actions">
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={uploading}
-                >
+                <button type="submit" className="btn btn-primary" disabled={uploading}>
                   {editingId ? 'Actualizar Publicación' : 'Crear Publicación'}
                 </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={resetForm}
-                  disabled={uploading}
-                >
+                <button type="button" className="btn btn-secondary" onClick={resetForm} disabled={uploading}>
                   Cancelar
                 </button>
               </div>
@@ -604,32 +651,36 @@ const PublicacionesViewVendedor = () => {
                     </td>
                     <td>
                       <div className="table-images">
-                        {publicacion.imagenes && publicacion.imagenes.slice(0, 2).map((img, index) => (
-                          <img 
-                            key={index}
-                            src={img} 
-                            alt={`Vehículo ${index + 1}`}
-                            className="table-image-thumbnail"
-                            onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.src = 'https://via.placeholder.com/50?text=Imagen+no+disponible';
-                            }}
-                          />
-                        ))}
+                        {publicacion.imagenes && publicacion.imagenes.length > 0 ? (
+                          publicacion.imagenes.slice(0, 2).map((img, index) => (
+                            <img
+                              key={`${publicacion.idPublicacion || publicacion.idVehiculo}-${index}`}
+                              src={img}
+                              alt={`Vehículo ${index + 1}`}
+                              className="table-image-thumbnail"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = 'https://via.placeholder.com/50?text=Imagen+no+disponible';
+                              }}
+                            />
+                          ))
+                        ) : (
+                          <span>Sin imágenes</span>
+                        )}
                       </div>
                     </td>
                     <td>{publicacion.fecha}</td>
                     <td className="actions">
-                      <button 
+                      <button
                         className="btn-icon btn-warning"
                         onClick={() => handleEdit(publicacion)}
                         title="Editar"
                       >
                         <Edit size={16} />
                       </button>
-                      <button 
+                      <button
                         className="btn-icon btn-danger"
-                        onClick={() => handleDelete(publicacion.idPublicacion)}
+                        onClick={() => handleDelete(publicacion.idVehiculo || publicacion.idPublicacion)}
                         title="Eliminar"
                       >
                         <Trash2 size={16} />
@@ -650,15 +701,12 @@ const PublicacionesViewVendedor = () => {
 
         {totalPages > 1 && (
           <div className="pagination">
-            <button 
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-            >
+            <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}>
               Anterior
             </button>
             <span>Página {currentPage} de {totalPages}</span>
-            <button 
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
             >
               Siguiente

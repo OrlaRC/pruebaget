@@ -4,6 +4,7 @@ import { Link, useHistory } from 'react-router-dom';
 import Footer from './component/footer';
 import Header from './component/header';  // Usamos solo este Header ahora
 import './home.css';
+import carsGif from '../context/carsget.gif';
 
 const testimonials = [
   {
@@ -95,17 +96,21 @@ const Home = () => {
       <Header />
 
       <main>
-        {/* Barra de búsqueda */}
-        <section className="search-section">
-          <h2 className="search-title">Encuentra exactamente lo que buscas</h2>
+        {/* Barra de búsqueda con fondo GIF CarsGet */}
+        <section
+          className="search-section"
+         style={{
+                height: '600px',
+                backgroundImage: `url(${carsGif})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                display: 'flex',
+                alignItems: 'center',      // Centrado vertical
+                justifyContent: 'center',  // Centrado horizontal
+              }}
+        >
           <div className="search-container">
-            <div className="search-filters">
-              <Link to="/subtipo/SUV" className="filter-button">SUV</Link>
-              <Link to="/subtipo/VAN" className="filter-button">VAN</Link>
-              <Link to="/subtipo/Sedán" className="filter-button">Sedán</Link>
-              <Link to="/subtipo/Minivan" className="filter-button">Minivan</Link>
-              <Link to="/subtipo/Pickup" className="filter-button">Pickup</Link>
-            </div>
+            <h2 className="search-title">Encuentra exactamente lo que buscas</h2>
           </div>
         </section>
 
