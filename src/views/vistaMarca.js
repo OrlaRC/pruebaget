@@ -1,9 +1,8 @@
-// VistaMarca.js
 import React, { useState, useEffect } from 'react';
 import { useParams, useLocation, useHistory } from 'react-router-dom';
 import Header from './component/header';
 import Footer from './component/footer';
-import './catalogo.css';
+import './vistaMarca.css';
 
 const VistaMarca = () => {
   const { idMarca } = useParams();
@@ -68,13 +67,19 @@ const VistaMarca = () => {
   return (
     <>
       <Header />
-      <div className="vista-marca-container">
-        <h1 className="vista-marca-title">
+      <div
+        className="vista-marca-container"
+        style={{ paddingLeft: '40px', paddingBottom: '40px' }}
+      >
+        <h1
+          className="vista-marca-title"
+          style={{ marginBottom: '32px', textAlign: 'left' }}
+        >
           Vehículos de {nombreMarca}
         </h1>
 
         {autos.length > 0 ? (
-          <div className="vista-marca-list">
+          <div className="catalogo">
             {autos.map(auto => (
               <div className="producto" key={auto.idVehiculo}>
                 <img

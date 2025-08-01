@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet';
 import { useHistory, useLocation } from 'react-router-dom';
-import HeaderPrivado from './component/headerPrivado';
+import HeaderPrivado from './component/header';
 import Footer from './component/footer';
 import './info_auto.css';
 

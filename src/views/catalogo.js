@@ -16,7 +16,6 @@ const Catalogo = () => {
   const años = ['2025', '2024', '2023', '2022', '2021', '2020', '2019', '2018', '2017'];
 
   useEffect(() => {
-    // Actualizar isAuthenticated si el token cambia
     const checkAuth = () => {
       setIsAuthenticated(!!localStorage.getItem('token'));
     };
@@ -24,12 +23,25 @@ const Catalogo = () => {
 
     fetch('http://localhost:3000/api/marcas')
       .then(res => res.json())
-      .then(data => data.success && setMarcas(data.data))
+      .then(data => {
+        if (data.success) {
+          console.log('Marcas recibidas:', data.data);
+          setMarcas(data.data);
+        } else {
+          console.error('Error fetching marcas:', data.message);
+        }
+      })
       .catch(err => console.error('Error fetching marcas:', err));
 
     fetch('http://localhost:3000/api/catalogo')
       .then(res => res.json())
-      .then(data => data.success && setAutos(data.data))
+      .then(data => {
+        if (data.success) {
+          setAutos(data.data);
+        } else {
+          console.error('Error fetching autos:', data.message);
+        }
+      })
       .catch(err => console.error('Error fetching autos:', err));
 
     return () => window.removeEventListener('storage', checkAuth);
@@ -84,7 +96,7 @@ const Catalogo = () => {
                 className="marca-card"
               >
                 <img src={marca.enlace_imagen} alt={marca.nombre_marca} />
-                <span>{marca.nombre_marca}</span>
+                <span title={marca.nombre_marca}>{marca.nombre_marca}</span>
               </Link>
             ))}
           </div>
@@ -106,7 +118,7 @@ const Catalogo = () => {
 
         <section className="catalogo">
           {filteredAutos.length > 0 ? (
-            filteredAutos.slice(0, 16).map(auto => (
+            filteredAutos.slice(0, 8).map(auto => (
               <div className="producto" key={auto.idVehiculo}>
                 <img
                   src={auto.imagenes[0] || ''}
