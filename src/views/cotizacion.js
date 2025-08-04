@@ -1,11 +1,73 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useHistory } from 'react-router-dom';
+import HeaderPrivado from './component/header';
 import Footer from './component/footer';
 import './cotizacion.css';
-import HeaderPrivado from './component/headerPrivado';
 
 const Desktop4 = () => {
+  const history = useHistory();
+  const { state } = useLocation();
+  const [vehiculo, setVehiculo] = useState(null);
+  const [mainImage, setMainImage] = useState('');
+  const [thumbnails, setThumbnails] = useState([]);
+  const [enganche, setEnganche] = useState('');
+  const [plazo, setPlazo] = useState('');
+
+  // Obtener id de vehículo de state o localStorage
+  const idVehiculo = state?.idVehiculo || localStorage.getItem('idVehiculo');
+
+  useEffect(() => {
+    if (state?.idVehiculo) {
+      localStorage.setItem('idVehiculo', state.idVehiculo);
+    }
+  }, [state]);
+
+  useEffect(() => {
+    if (!idVehiculo) return;
+    const fetchVehiculo = async () => {
+      try {
+        const res = await fetch(`http://localhost:3000/api/catalogo/${idVehiculo}`);
+        const data = await res.json();
+        if (data.success) {
+          setVehiculo(data.data);
+          const imgs = data.data.imagenes || [];
+          if (imgs.length) {
+            setMainImage(imgs[0]);
+            setThumbnails(imgs.slice(1));
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching vehículo para cotización:', err);
+      }
+    };
+    fetchVehiculo();
+  }, [idVehiculo]);
+
+  const calcularMensualidad = () => {
+    // Lógica de cálculo (puedes adaptar)
+    if (!vehiculo) return;
+    const precio = parseFloat(vehiculo.precio);
+    const montoEnganche = parseFloat(enganche) || 0;
+    const plazoMeses = parseInt(plazo) || 1;
+    const montoFinanciado = precio - montoEnganche;
+    const tasaInteresAnual = 0.12; // ejemplo
+    const interesMensual = tasaInteresAnual / 12;
+    const mensualidad = (montoFinanciado * interesMensual) /
+      (1 - Math.pow(1 + interesMensual, -plazoMeses));
+    alert(`Tu mensualidad sería: $${mensualidad.toFixed(2)}`);
+  };
+
+  if (!vehiculo) {
+    return (
+      <>
+        <HeaderPrivado />
+        <div className="desktop4-loading">Cargando datos para cotización...</div>
+        <Footer />
+      </>
+    );
+  }
+
   return (
     <div className="desktop4-container">
       <Helmet>
@@ -14,24 +76,38 @@ const Desktop4 = () => {
 
       <HeaderPrivado />
 
-      {/* CONTENIDO PRINCIPAL */}
       <main className="desktop4-main">
-
-        {/* CALCULADORA */}
         <section className="desktop4-cotiza">
           <h2 className="desktop4-subtitulo">COTIZA JUSTO AQUÍ</h2>
 
           <div className="desktop4-input-field">
             <label>PRECIO:</label>
-            <input type="text" placeholder="$200,000" disabled />
+            <input
+              type="text"
+              value={`$${parseFloat(vehiculo.precio).toLocaleString()}`}
+              disabled
+            />
 
             <label>Monto de enganche</label>
-            <input type="text" placeholder="$20,000" />
+            <input
+              type="number"
+              placeholder="20000"
+              value={enganche}
+              onChange={e => setEnganche(e.target.value)}
+            />
 
             <label>Meses de plazo</label>
-            <input type="text" placeholder="60 meses" />
+            <input
+              type="number"
+              placeholder="60"
+              value={plazo}
+              onChange={e => setPlazo(e.target.value)}
+            />
 
-            <button className="desktop4-button">
+            <button
+              className="desktop4-button"
+              onClick={calcularMensualidad}
+            >
               CALCULA TU MENSUALIDAD
             </button>
             <Link to="/solicitud-credito">
@@ -55,28 +131,23 @@ const Desktop4 = () => {
           </div>
         </section>
 
-        {/* GALERÍA */}
         <section className="desktop4-galeria">
-          <img src="/external/ima-mazda (1).png" alt="Vista 1" />
-          <img src="/external/ima-mazda (2).png" alt="Vista 2" />
-          <img src="/external/ima-mazda (3).png" alt="Vista 3" />
-          <img src="/external/ima-mazda (4).png" alt="Vista 4" />
+          {mainImage && <img src={mainImage} alt="Principal" />}
+          {thumbnails.map((src, i) => (
+            <img key={i} src={src} alt={`Vista ${i+2}`} />
+          ))}
         </section>
 
-        {/* DESCRIPCIÓN */}
         <section className="desktop4-descripcion">
           <h2>Descripción del Vehículo</h2>
           <p className="desktop4-texto-descripcion">
-            Perfecto para ciudad o carretera, este Mazda ofrece una experiencia de conducción cómoda, segura y con carácter. ¡Una gran opción si buscas un sedán con presencia y calidad!
+            {vehiculo.descripcion}
           </p>
 
           <ul className="desktop4-especificaciones">
-            <li>✔ Motor 2.5L, 4 cilindros</li>
-            <li>✔ Transmisión automática</li>
-            <li>✔ Combustible: gasolina</li>
-            <li>✔ 4 puertas, espacioso y elegante</li>
-            <li>✔ Estética moderna con acabados deportivos</li>
-            <li>✔ Garantía mecánica y eléctrica</li>
+            {vehiculo.caracteristicas
+              ?.split(', ')
+              .map((c, i) => <li key={i}>✔ {c}</li>)}
           </ul>
         </section>
       </main>
