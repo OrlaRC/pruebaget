@@ -6,7 +6,11 @@
   <component name="ChangeListManager">
     <list default="true" id="ead7a63f-3e98-43ee-bfd6-f5240fee6f0d" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/views/crud-vendedor/PublicacionesViewVendedor.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/crud-vendedor/PublicacionesViewVendedor.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/crud-vendedor/FinanciamientoView.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/crud-vendedor/FinanciamientoView.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/crud-vendedor/FinanciamientoView.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/crud-vendedor/FinanciamientoView.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/crud-vendedor/VentasView.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/crud-vendedor/VentasView.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
