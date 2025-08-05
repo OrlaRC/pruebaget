@@ -42,7 +42,7 @@ const VehiculosView = ({ showNotification }) => {
     const headers = getAuthHeaders(true);
     if (!headers) return;
     try {
-      const res = await axios.get('http://localhost:3000/api/catalogo', { headers });
+      const res = await axios.get('http://localhost:3000/api/catalogo/admin', { headers });
       if (res.data.success) setVehiculos(res.data.data);
     } catch {
       showNotification?.('Error al cargar vehículos', 'error');
@@ -310,7 +310,7 @@ const VehiculosView = ({ showNotification }) => {
                     onChange={handleInputChange}
                   />
                 </div>
-                <div className="form-group">
+               <div className="form-group">
                   <label>Estado</label>
                   <select
                     name="estado"
@@ -319,10 +319,12 @@ const VehiculosView = ({ showNotification }) => {
                     required
                   >
                     <option value="disponible">Disponible</option>
+                    <option value="no_disponible">No disponible</option>
                     <option value="reservado">Reservado</option>
                     <option value="vendido">Vendido</option>
                   </select>
                 </div>
+
                 <div className="form-group">
                   <label>Tipo de Combustible</label>
                   <input
@@ -386,15 +388,18 @@ const VehiculosView = ({ showNotification }) => {
                     <td>{v.modelo}{v.version && ` (${v.version})`}</td>
                     <td>{v.ano}</td>
                     <td>{formatPrice(v.precio)}</td>
-                    <td>
-                      <span className={`badge ${
-                        v.estado === 'disponible' ? 'badge-success' :
-                        v.estado === 'reservado' ? 'badge-warning' :
-                        v.estado === 'vendido' ? 'badge-primary' : 'badge-secondary'
-                      }`}>
-                        {v.estado}
-                      </span>
-                    </td>
+                   <td>
+                     <span className={`badge ${
+                      v.estado === 'disponible' ? 'badge-success' :
+                      v.estado === 'reservado' ? 'badge-warning' :
+                      v.estado === 'vendido' ? 'badge-primary' :
+                      v.estado === 'no_disponible' ? 'badge-danger' :
+                      'badge-secondary'
+                    }`}>
+                      {v.estado === 'no_disponible' ? 'No disponible' : v.estado}
+                    </span>
+
+                      </td>
                     <td>{getVendedorNombre(v.idVendedor)}</td>
                     <td className="actions">
                       <button className="btn-icon btn-warning" onClick={() => handleEdit(v)} title="Editar"><Edit size={16}/></button>

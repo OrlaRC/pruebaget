@@ -14,7 +14,6 @@ const menuItems = [
   { path: '/imagenes', label: 'Imágenes', icon: Image },
   { path: '/publicaciones', label: 'Publicaciones', icon: FileText },
   { path: '/auditoria', label: 'Auditoría', icon: BarChart3 },
-  { path: '/settings', label: 'Configuración', icon: Settings }
 ];
 
 const LayoutAdmin = ({ children }) => {

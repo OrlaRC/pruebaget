@@ -4,6 +4,18 @@ import { useHistory } from 'react-router-dom';
 import LayoutAdmin from '../layout/LayoutAdmin';
 import FingerprintModal from './FingerprintModal';
 
+
+const fetchWithValidation = async (url, options) => {
+  const res = await fetch(url, options);
+  
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || `HTTP ${res.status}`);
+  }
+  
+  return res.json();
+};
+
 const UsuariosView = ({ showNotification }) => {
   const [usuarios, setUsuarios] = useState([]);
   const [filteredUsuarios, setFilteredUsuarios] = useState([]);
@@ -12,36 +24,43 @@ const UsuariosView = ({ showNotification }) => {
   const [formData, setFormData] = useState({
     nombre: '',
     email: '',
-    telefono: '',
-    direccion: '',
     password: '',
     idRol: 2,
     estado: 'activo',
   });
+  const [formErrors, setFormErrors] = useState({});
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [showFingerprintModal, setShowFingerprintModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(false); // Nuevo estado para manejar la carga
+  const [isLoading, setIsLoading] = useState(false);
   const itemsPerPage = 10;
   const history = useHistory();
 
-  // 🔹 GET usuarios
+  const validateForm = () => {
+    const errors = {};
+    
+    if (!formData.nombre.trim()) errors.nombre = 'Nombre es requerido';
+    if (!formData.email.trim()) errors.email = 'Email es requerido';
+    if (!formData.password && !editingId) errors.password = 'Contraseña es requerida';
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   useEffect(() => {
     let isMounted = true;
     const fetchUsuarios = async () => {
       const token = localStorage.getItem('accessToken');
       try {
-        const res = await fetch('http://localhost:3000/api/usuarios', {
+        const json = await fetchWithValidation('http://localhost:3000/api/usuarios', {
           headers: { Authorization: `Bearer ${token}` }
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = await res.json();
-        if (!json.success) throw new Error(json.message || 'Error desconocido');
+        
         if (isMounted) {
           const list = json.data
-            .filter(u => u.idRol === 1 || u.idRol === 2)
+            .filter(u => u.idRol === 2)
             .map(u => ({
               ...u,
               telefono: u.telefono ?? '-',
@@ -53,14 +72,13 @@ const UsuariosView = ({ showNotification }) => {
         }
       } catch (err) {
         console.error('Error al obtener usuarios:', err);
-        showNotification?.('Error al cargar usuarios', 'error');
+        showNotification?.('Error al cargar usuarios: ' + err.message, 'error');
       }
     };
     fetchUsuarios();
     return () => { isMounted = false; };
   }, [showNotification]);
 
-  // 🔹 Filtrado
   useEffect(() => {
     const lower = searchTerm.toLowerCase();
     setFilteredUsuarios(
@@ -74,11 +92,11 @@ const UsuariosView = ({ showNotification }) => {
     setCurrentPage(1);
   }, [searchTerm, usuarios]);
 
-  // 🔹 Ordenamiento
   const requestSort = key => {
     const direction = sortConfig.key === key && sortConfig.direction === 'asc' ? 'desc' : 'asc';
     setSortConfig({ key, direction });
   };
+  
   const sortedUsuarios = useMemo(() => {
     const items = [...filteredUsuarios];
     items.sort((a, b) => {
@@ -89,29 +107,37 @@ const UsuariosView = ({ showNotification }) => {
     return items;
   }, [filteredUsuarios, sortConfig]);
 
-  // 🔹 Paginación
   const totalPages = Math.ceil(sortedUsuarios.length / itemsPerPage);
   const paginatedUsuarios = sortedUsuarios.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
-  // 🔹 Formulario
   const handleInputChange = e => {
     const { name, value } = e.target;
     setFormData(fd => ({ ...fd, [name]: value }));
+    if (formErrors[name]) {
+      setFormErrors(prev => ({ ...prev, [name]: '' }));
+    }
   };
+  
   const resetForm = () => {
-    setFormData({ nombre: '', email: '', telefono: '', direccion: '', password: '', idRol: 2, estado: 'activo' });
+    setFormData({ nombre: '', email: '', password: '', idRol: 2, estado: 'activo' });
+    setFormErrors({});
     setEditingId(null);
     setShowForm(false);
   };
 
-  // 🔹 POST y PUT
   const handleSubmit = async e => {
     e.preventDefault();
-    if (isLoading) return; // Evitar solicitudes mientras una está en curso
-    setIsLoading(true); // Activar estado de carga
+    if (isLoading) return;
+    
+    if (!validateForm()) {
+      showNotification?.('Por favor corrige los errores en el formulario', 'error');
+      return;
+    }
+    
+    setIsLoading(true);
 
     const token = localStorage.getItem('accessToken');
 
@@ -125,10 +151,10 @@ const UsuariosView = ({ showNotification }) => {
         method = 'PUT';
         bodyData = {
           nombre: formData.nombre,
-          telefono: Number(formData.telefono) || null,
-          direccion: formData.direccion,
-          password: formData.password,
-          idRol: formData.idRol,
+          telefono: formData.telefono || null,
+          direccion: formData.direccion || null,
+          password: formData.password || undefined,
+          idRol: 2,
           estado: formData.estado
         };
       } else {
@@ -136,58 +162,57 @@ const UsuariosView = ({ showNotification }) => {
           nombre: formData.nombre,
           email: formData.email,
           password: formData.password,
-          idRol: formData.idRol
+          idRol: 2
         };
       }
 
-      const res = await fetch(url, {
+      const cleanBodyData = Object.fromEntries(
+        Object.entries(bodyData).filter(([_, v]) => v !== undefined)
+      );
+
+      const json = await fetchWithValidation(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify(bodyData)
+        body: JSON.stringify(cleanBodyData)
       });
 
-      if (!res.ok) {
-        if (res.status === 429) {
-          throw new Error('Demasiadas solicitudes, por favor intenta de nuevo más tarde');
-        }
-        throw new Error(`HTTP ${res.status}`);
-      }
-
-      const json = await res.json();
-      if (!json.success) throw new Error(json.message);
-
       if (editingId) {
-        setUsuarios(u =>
-          u.map(x =>
-            x.idUsuario === editingId ? { ...x, ...json.data } : x
-          )
-        );
+        setUsuarios(u => u.map(x => x.idUsuario === editingId ? { 
+          ...x, 
+          ...json.data,
+          telefono: json.data.telefono ?? '-',
+          direccion: json.data.direccion ?? '-'
+        } : x));
         showNotification?.('Usuario actualizado con éxito');
       } else {
-        setUsuarios(u => [
-          ...u,
-          { ...json.data, telefono: '-', direccion: '-', fingerprintStatus: 'no registrado' }
-        ]);
+        setUsuarios(u => [...u, { 
+          ...json.data, 
+          telefono: '-', 
+          direccion: '-', 
+          fingerprintStatus: 'no registrado' 
+        }]);
         showNotification?.('Usuario creado con éxito');
       }
 
       resetForm();
     } catch (err) {
       console.error('Error al guardar usuario:', err);
-      if (err.message.includes('429')) {
-        showNotification?.('Demasiadas solicitudes, espera unos segundos e intenta de nuevo', 'error');
-      } else {
-        showNotification?.('Error al guardar el usuario', 'error');
+      showNotification?.('Error al guardar: ' + err.message, 'error');
+      
+      if (err.message.includes('email') || err.message.includes('nombre')) {
+        setFormErrors(prev => ({ ...prev, 
+          email: err.message.includes('email') ? err.message : '',
+          nombre: err.message.includes('nombre') ? err.message : ''
+        }));
       }
     } finally {
-      setIsLoading(false); // Desactivar estado de carga
+      setIsLoading(false);
     }
   };
 
-  // 🔹 Editar
   const handleEdit = u => {
     setFormData({
       nombre: u.nombre,
@@ -195,47 +220,43 @@ const UsuariosView = ({ showNotification }) => {
       telefono: u.telefono === '-' ? '' : u.telefono,
       direccion: u.direccion === '-' ? '' : u.direccion,
       password: '',
-      idRol: u.idRol,
+      idRol: 2,
       estado: u.estado
     });
+    setFormErrors({});
     setEditingId(u.idUsuario);
     setShowForm(true);
   };
 
-  // 🔹 DELETE
   const handleDelete = async id => {
     if (window.confirm('¿Estás seguro de eliminar este usuario?')) {
       const token = localStorage.getItem('accessToken');
       try {
-        const res = await fetch(`http://localhost:3000/api/usuarios/${id}`, {
+        await fetchWithValidation(`http://localhost:3000/api/usuarios/${id}`, {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token}` }
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = await res.json();
-        if (!json.success) throw new Error(json.message);
 
         setUsuarios(u => u.filter(x => x.idUsuario !== id));
         showNotification?.('Usuario eliminado');
       } catch (err) {
         console.error('Error al eliminar usuario:', err);
-        showNotification?.('Error al eliminar usuario', 'error');
+        showNotification?.('Error al eliminar: ' + err.message, 'error');
       }
     }
   };
 
-  // 🔹 Fingerprint
   const handleManageFingerprint = u => {
     setSelectedUser(u);
     setShowFingerprintModal(true);
   };
+  
   const handleFingerprintSuccess = idUsuario => {
     setUsuarios(u => u.map(x => x.idUsuario === idUsuario ? { ...x, fingerprintStatus: 'verificado' } : x));
     setShowFingerprintModal(false);
     showNotification?.('Huella registrada');
   };
 
-  // 🔹 Logout
   const handleLogout = () => {
     localStorage.clear();
     history.push('/login');
@@ -256,9 +277,21 @@ const UsuariosView = ({ showNotification }) => {
                 onChange={e => setSearchTerm(e.target.value)}
               />
             </div>
-            <button className="btn btn-primary" onClick={() => setShowForm(sf => !sf)}>
-              <Plus size={18} /> {showForm ? 'Cancelar' : 'Nuevo Usuario'}
-            </button>
+         <button
+          className={`btn ${showForm ? "btn-danger" : "btn-primary"}`}
+          onClick={() => setShowForm(sf => !sf)}
+        >
+          {showForm ? (
+            <>
+              ❌ Cancelar
+            </>
+          ) : (
+            <>
+              <Plus size={18} /> Nuevo Usuario
+            </>
+          )}
+        </button>
+
             <button className="btn btn-secondary ml-2" onClick={handleLogout}>
               Cerrar Sesión
             </button>
@@ -271,45 +304,100 @@ const UsuariosView = ({ showNotification }) => {
               <div className="form-grid">
                 <div className="form-group">
                   <label>Nombre</label>
-                  <input name="nombre" value={formData.nombre} onChange={handleInputChange} required />
+                  <input 
+                    name="nombre" 
+                    value={formData.nombre} 
+                    onChange={handleInputChange} 
+                    disabled={isLoading}
+                    className={formErrors.nombre ? 'is-invalid' : ''}
+                  />
+                  {formErrors.nombre && <div className="invalid-feedback">{formErrors.nombre}</div>}
                 </div>
+                
                 <div className="form-group">
                   <label>Email</label>
-                  <input type="email" name="email" value={formData.email} onChange={handleInputChange} required={!editingId} />
+                  <input 
+                    type="email" 
+                    name="email" 
+                    value={formData.email} 
+                    onChange={handleInputChange} 
+                    disabled={isLoading || editingId}
+                    className={formErrors.email ? 'is-invalid' : ''}
+                  />
+                  {formErrors.email && <div className="invalid-feedback">{formErrors.email}</div>}
                 </div>
-                <div className="form-group">
-                  <label>Teléfono</label>
-                  <input name="telefono" value={formData.telefono} onChange={handleInputChange} />
-                </div>
-                <div className="form-group">
-                  <label>Dirección</label>
-                  <input name="direccion" value={formData.direccion} onChange={handleInputChange} />
-                </div>
+                
+                {editingId && (
+                  <>
+                    <div className="form-group">
+                      <label>Teléfono</label>
+                      <input 
+                        name="telefono" 
+                        value={formData.telefono} 
+                        onChange={handleInputChange} 
+                        disabled={isLoading}
+                      />
+                    </div>
+                    
+                    <div className="form-group">
+                      <label>Dirección</label>
+                      <input 
+                        name="direccion" 
+                        value={formData.direccion} 
+                        onChange={handleInputChange} 
+                        disabled={isLoading}
+                      />
+                    </div>
+                  </>
+                )}
+                
                 <div className="form-group">
                   <label>Contraseña</label>
-                  <input type="password" name="password" value={formData.password} onChange={handleInputChange} required />
+                  <input 
+                    type="password" 
+                    name="password" 
+                    value={formData.password} 
+                    onChange={handleInputChange} 
+                    disabled={isLoading}
+                    className={formErrors.password ? 'is-invalid' : ''}
+                    placeholder={editingId ? "Dejar vacío para no cambiar" : ""}
+                  />
+                  {formErrors.password && <div className="invalid-feedback">{formErrors.password}</div>}
                 </div>
-                <div className="form-group">
-                  <label>Rol</label>
-                  <select name="idRol" value={formData.idRol} onChange={handleInputChange}>
-                    <option value={1}>Administrador</option>
-                    <option value={2}>Vendedor</option>
-                    <option value={3}>Otro</option>
-                  </select>
-                </div>
+                
                 <div className="form-group">
                   <label>Estado</label>
-                  <select name="estado" value={formData.estado} onChange={handleInputChange}>
+                  <select 
+                    name="estado" 
+                    value={formData.estado} 
+                    onChange={handleInputChange}
+                    disabled={isLoading}
+                  >
                     <option value="activo">Activo</option>
                     <option value="inactivo">Inactivo</option>
                   </select>
                 </div>
               </div>
+              
               <div className="form-actions">
-                <button type="submit" className="btn btn-primary" disabled={isLoading}>
-                  {isLoading ? 'Guardando...' : editingId ? 'Actualizar Usuario' : 'Crear Usuario'}
+                <button 
+                  type="submit" 
+                  className="btn btn-primary" 
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                      {editingId ? ' Actualizando...' : ' Creando...'}
+                    </>
+                  ) : editingId ? 'Actualizar Usuario' : 'Crear Usuario'}
                 </button>
-                <button type="button" className="btn btn-secondary" onClick={resetForm} disabled={isLoading}>
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={resetForm} 
+                  disabled={isLoading}
+                >
                   Cancelar
                 </button>
               </div>
@@ -332,9 +420,6 @@ const UsuariosView = ({ showNotification }) => {
                 </th>
                 <th>Teléfono</th>
                 <th>Dirección</th>
-                <th onClick={() => requestSort('idRol')}>
-                  Rol {sortConfig.key === 'idRol' && (sortConfig.direction === 'asc' ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
-                </th>
                 <th onClick={() => requestSort('estado')}>
                   Estado {sortConfig.key === 'estado' && (sortConfig.direction === 'asc' ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
                 </th>
@@ -350,19 +435,45 @@ const UsuariosView = ({ showNotification }) => {
                   <td>{u.email}</td>
                   <td>{u.telefono}</td>
                   <td>{u.direccion}</td>
-                  <td>{u.idRol === 1 ? 'Admin' : u.idRol === 2 ? 'Vendedor' : 'Otro'}</td>
-                  <td><span className={`badge ${u.estado === 'activo' ? 'badge-success' : 'badge-danger'}`}>{u.estado}</span></td>
+                  <td>
+                    <span className={`badge ${u.estado === 'activo' ? 'badge-success' : 'badge-danger'}`}>
+                      {u.estado}
+                    </span>
+                  </td>
                   <td style={{ paddingLeft: 20 }}>
-                    <span className={`badge ${u.fingerprintStatus === 'verificado' ? 'badge-success' : 'badge-secondary'}`}>{u.fingerprintStatus}</span>
-                    <button className="btn-icon btn-primary ml-2" onClick={() => handleManageFingerprint(u)} title="Gestionar Huella"><Fingerprint size={16} /></button>
+                    <span className={`badge ${u.fingerprintStatus === 'verificado' ? 'badge-success' : 'badge-secondary'}`}>
+                      {u.fingerprintStatus}
+                    </span>
+                    <button 
+                      className="btn-icon btn-primary ml-2" 
+                      onClick={() => handleManageFingerprint(u)} 
+                      title="Gestionar Huella"
+                      disabled={isLoading}
+                    >
+                      <Fingerprint size={16} />
+                    </button>
                   </td>
                   <td className="actions">
-                    <button className="btn-icon btn-warning" onClick={() => handleEdit(u)} title="Editar"><Edit size={16} /></button>
-                    <button className="btn-icon btn-danger" onClick={() => handleDelete(u.idUsuario)} title="Eliminar"><Trash2 size={16} /></button>
+                    <button 
+                      className="btn-icon btn-warning" 
+                      onClick={() => handleEdit(u)} 
+                      title="Editar"
+                      disabled={isLoading}
+                    >
+                      <Edit size={16} />
+                    </button>
+                    <button 
+                      className="btn-icon btn-danger" 
+                      onClick={() => handleDelete(u.idUsuario)} 
+                      title="Eliminar"
+                      disabled={isLoading}
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </td>
                 </tr>
               )) : (
-                <tr><td colSpan="9" className="no-results">No se encontraron usuarios</td></tr>
+                <tr><td colSpan="8" className="no-results">No se encontraron usuarios</td></tr>
               )}
             </tbody>
           </table>
@@ -378,9 +489,19 @@ const UsuariosView = ({ showNotification }) => {
 
         {totalPages > 1 && (
           <div className="pagination">
-            <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>Anterior</button>
+            <button 
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
+              disabled={currentPage === 1 || isLoading}
+            >
+              Anterior
+            </button>
             <span>Página {currentPage} de {totalPages}</span>
-            <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>Siguiente</button>
+            <button 
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} 
+              disabled={currentPage === totalPages || isLoading}
+            >
+              Siguiente
+            </button>
           </div>
         )}
       </div>

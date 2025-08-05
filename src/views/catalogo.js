@@ -22,10 +22,12 @@ const Catalogo = () => {
     const checkAuth = () => setIsAuthenticated(!!localStorage.getItem('token'));
     window.addEventListener('storage', checkAuth);
 
+    // Cargar marcas
     fetch('http://localhost:3000/api/marcas')
       .then(res => res.json())
       .then(data => { if (data.success) setMarcas(data.data); });
 
+    // Cargar autos
     fetch('http://localhost:3000/api/catalogo')
       .then(res => res.json())
       .then(data => { if (data.success) setAutos(data.data); });
@@ -40,15 +42,21 @@ const Catalogo = () => {
     setCurrentPage(1);
   };
 
+  // Filtrar autos por año y búsqueda (marca o modelo)
   const filteredAutos = autos.filter(auto => {
     const matchesYear = selectedYears.length ? selectedYears.includes(auto.ano.toString()) : true;
-    const matchesSearch = searchQuery ? auto.modelo.toLowerCase().includes(searchQuery.toLowerCase()) : true;
+    const marca = marcas.find(m => m.idMarca === auto.idMarca);
+    const search = searchQuery.toLowerCase();
+    const matchesSearch = search
+      ? auto.modelo.toLowerCase().includes(search) || (marca && marca.nombre_marca.toLowerCase().includes(search))
+      : true;
     return matchesYear && matchesSearch;
   });
 
   const totalPages = Math.ceil(filteredAutos.length / itemsPerPage);
   const paginatedAutos = filteredAutos.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
+  // Paginación
   const goToFirst = () => setCurrentPage(1);
   const goToLast = () => setCurrentPage(totalPages);
   const goToPrev = () => setCurrentPage(prev => Math.max(1, prev - 1));
@@ -66,7 +74,7 @@ const Catalogo = () => {
       <div className="search-bar">
         <input
           type="text"
-          placeholder="Buscar por modelo"
+          placeholder="Buscar por marca o modelo"
           value={searchQuery}
           onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
           className="search-input"
@@ -78,7 +86,12 @@ const Catalogo = () => {
           <h3>Marca</h3>
           <div className="marcas">
             {marcas.map(marca => (
-              <Link key={marca.idMarca} to={`/marca/${marca.idMarca}`} state={{ nombre: marca.nombre_marca }} className="marca-card">
+              <Link
+                key={marca.idMarca}
+                to={`/marca/${marca.idMarca}`}
+                state={{ nombre: marca.nombre_marca }}
+                className="marca-card"
+              >
                 <img src={marca.enlace_imagen} alt={marca.nombre_marca} />
                 <span title={marca.nombre_marca}>{marca.nombre_marca}</span>
               </Link>
@@ -89,7 +102,11 @@ const Catalogo = () => {
           <div className="años">
             {años.map(year => (
               <label className="checkbox" key={year}>
-                <input type="checkbox" checked={selectedYears.includes(year)} onChange={() => handleYearChange(year)} />
+                <input
+                  type="checkbox"
+                  checked={selectedYears.includes(year)}
+                  onChange={() => handleYearChange(year)}
+                />
                 <span>{year}</span>
               </label>
             ))}
@@ -98,28 +115,54 @@ const Catalogo = () => {
 
         <section className="catalogo">
           {paginatedAutos.length > 0 ? (
-            paginatedAutos.map(auto => (
-              <div className="producto" key={auto.idVehiculo}>
-                <img src={auto.imagenes[0] || ''} alt={auto.modelo} className="auto" />
-                <span className="marca">{auto.modelo}</span>
-                <span className="año">{auto.ano}</span>
-                <span className="precio">${Number(auto.precio).toLocaleString()}</span>
-                <button className="mas-info" onClick={() => history.push('/info-auto', { idVehiculo: auto.idVehiculo })}>
-                  Más información
-                </button>
-              </div>
-            ))
+            paginatedAutos.map(auto => {
+              // Obtener nombre de la marca para mostrar
+              const marca = marcas.find(m => m.idMarca === auto.idMarca);
+
+              return (
+                <div className="producto" key={auto.idVehiculo}>
+                  <img
+                    src={auto.imagenes[0] || ''}
+                    alt={auto.modelo}
+                    className="auto"
+                  />
+
+                  {/* Marca en negrita + Modelo */}
+                  <span className="marca">
+                    <strong>{marca ? marca.nombre_marca : 'Marca desconocida'}</strong> {auto.modelo}
+                  </span>
+
+                  <span className="año">{auto.ano}</span>
+                  <span className="precio">${Number(auto.precio).toLocaleString()}</span>
+
+                  <button
+                    className="mas-info"
+                    onClick={() => history.push('/info-auto', { idVehiculo: auto.idVehiculo })}
+                  >
+                    Más información
+                  </button>
+                </div>
+              );
+            })
           ) : (
             <p>No hay autos disponibles para los filtros seleccionados.</p>
           )}
 
           {totalPages > 1 && (
             <div className="pagination-bottom">
-              <button onClick={goToFirst} disabled={currentPage === 1} title="Primera página"><ArrowBigLeft size={16} /></button>
-              <button onClick={goToPrev} disabled={currentPage === 1} title="Anterior"><ArrowLeft size={16} /></button>
+              <button onClick={goToFirst} disabled={currentPage === 1} title="Primera página">
+                <ArrowBigLeft size={16} />
+              </button>
+              <button onClick={goToPrev} disabled={currentPage === 1} title="Anterior">
+                <ArrowLeft size={16} />
+              </button>
               <span>Página {currentPage} de {totalPages}</span>
-              <button onClick={goToNext} disabled={currentPage === totalPages} title="Siguiente"><ArrowRight size={16} /></button>
-              <button onClick={goToLast} disabled={currentPage === totalPages} title="Última página"><ArrowBigRight size={16} /></button>
+              <button onClick={goToNext} disabled={currentPage === totalPages} title="Siguiente">
+                <ArrowRight size={16} />
+              </button>
+              <button onClick={goToLast} disabled={currentPage === totalPages} title="Última página">
+                <ArrowBigRight size={16} />
+              </button>
             </div>
           )}
         </section>

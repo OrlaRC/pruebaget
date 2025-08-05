@@ -22,7 +22,7 @@ const PublicacionesViewVendedor = () => {
     caracteristicas: '',
     descripcion: '',
     estado: 'disponible',
-    tipoCombustible: 'gasolina',
+    tipoCombustible: '',
     transmision: 'manual',
     imagenes: [],
   });
@@ -107,7 +107,7 @@ const PublicacionesViewVendedor = () => {
           throw new Error(marcasData.message || 'No se pudieron cargar las marcas');
         }
 
-        const publicacionesRes = await fetch('http://localhost:3000/api/catalogo', {
+        const publicacionesRes = await fetch('http://localhost:3000/api/catalogo/admin', {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         if (!publicacionesRes.ok) throw new Error('Error al cargar publicaciones');
@@ -178,7 +178,7 @@ const PublicacionesViewVendedor = () => {
     });
 
     if (validFiles.length !== files.length) {
-      debouncedShowNotification('Algunas imágenes no son válidas', 'error');
+      debouncedShowNotification('Algunas imágenesTECH no son válidas', 'error');
       return;
     }
 
@@ -211,18 +211,14 @@ const PublicacionesViewVendedor = () => {
     if (!accessToken) return;
 
     const formDataToSend = new FormData();
+    
     Object.entries(formData).forEach(([key, value]) => {
-      if (key === 'imagenes') {
-        const newFiles = value.filter((img) => img instanceof File);
-        newFiles.forEach((file) => formDataToSend.append('imagenes', file));
-        const existingUrls = value.filter((img) => typeof img === 'string');
-        if (existingUrls.length > 0) {
-          formDataToSend.append('existingImages', JSON.stringify(existingUrls));
-        }
-      } else {
+      if (key !== 'imagenes') {
         formDataToSend.append(key, value);
       }
     });
+
+    formData.imagenes.forEach((file) => formDataToSend.append('imagenes', file));
 
     try {
       setUploading(true);
@@ -248,7 +244,7 @@ const PublicacionesViewVendedor = () => {
           editingId ? 'Publicación actualizada correctamente' : 'Publicación creada correctamente',
           'success'
         );
-        const publicacionesRes = await fetch('http://localhost:3000/api/catalogo', {
+        const publicacionesRes = await fetch('http://localhost:3000/api/catalogo/admin', {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         if (publicacionesRes.ok) {
@@ -285,28 +281,35 @@ const PublicacionesViewVendedor = () => {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (!res.ok) throw new Error('Error en la respuesta del servidor');
-      const data = await res.json();
-      if (data.success) {
-        setFormData({
-          idVendedor: user.idUsuario,
-          idMarca: data.data.idMarca || '',
-          modelo: data.data.modelo || '',
-          version: data.data.version || '',
-          ano: data.data.ano || '',
-          kilometraje: data.data.kilometraje || '',
-          precio: data.data.precio || '',
-          caracteristicas: data.data.caracteristicas || '',
-          descripcion: data.data.descripcion || '',
-          estado: data.data.estado || 'disponible',
-          tipoCombustible: data.data.tipoCombustible || 'gasolina',
-          transmision: data.data.transmision || 'manual',
-          imagenes: data.data.imagenes || [],
-        });
-        setEditingId(id);
-        setShowForm(true);
-      } else {
-        throw new Error(data.message || 'No se pudieron cargar los datos de la publicación');
-      }
+      const result = await res.json();
+      if (!result.success) throw new Error(result.message || 'No se pudieron cargar los datos de la publicación');
+
+      const d = result.data;
+      const imagenesFiles = await Promise.all(
+        d.imagenes.map(async (url) => {
+          const response = await fetch(url);
+          const blob = await response.blob();
+          return new File([blob], url.split('/').pop(), { type: blob.type });
+        })
+      );
+
+      setFormData({
+        idVendedor: user.idUsuario,
+        idMarca: d.idMarca || '',
+        modelo: d.modelo || '',
+        version: d.version || '',
+        ano: d.ano || '',
+        kilometraje: d.kilometraje || '',
+        precio: d.precio || '',
+        caracteristicas: d.caracteristicas || '',
+        descripcion: d.descripcion || '',
+        estado: d.estado || 'disponible',
+        tipoCombustible: d.tipoCombustible || '',
+        transmision: d.transmision || 'manual',
+        imagenes: imagenesFiles,
+      });
+      setEditingId(id);
+      setShowForm(true);
     } catch (error) {
       debouncedShowNotification(`Error al cargar datos de la publicación: ${error.message}`, 'error');
     }
@@ -329,7 +332,7 @@ const PublicacionesViewVendedor = () => {
       const data = await res.json();
       if (data.success) {
         debouncedShowNotification('Publicación eliminada correctamente', 'success');
-        const publicacionesRes = await fetch('http://localhost:3000/api/catalogo', {
+        const publicacionesRes = await fetch('http://localhost:3000/api/catalogo/admin', {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         if (publicacionesRes.ok) {
@@ -362,7 +365,7 @@ const PublicacionesViewVendedor = () => {
       caracteristicas: '',
       descripcion: '',
       estado: 'disponible',
-      tipoCombustible: 'gasolina',
+      tipoCombustible: '',
       transmision: 'manual',
       imagenes: [],
     });
@@ -539,8 +542,9 @@ const PublicacionesViewVendedor = () => {
                     required
                   >
                     <option value="gasolina">Gasolina</option>
-                    <option value="diesel">Diesel</option>
-                    <option value="hibrido">Híbrido</option>
+                    <option value="diésel">Diésel</option>
+                    <option value="eléctrico">Eléctrico</option>
+                    <option value="híbrido">Híbrido</option>
                     <option value="otro">Otro</option>
                   </select>
                 </div>
@@ -554,7 +558,7 @@ const PublicacionesViewVendedor = () => {
                     required
                   >
                     <option value="manual">Manual</option>
-                    <option value="automatica">Automática</option>
+                    <option value="automática">Automática</option>
                     <option value="CVT">CVT</option>
                     <option value="otro">Otro</option>
                   </select>
@@ -585,7 +589,7 @@ const PublicacionesViewVendedor = () => {
                         </>
                       )}
                     </button>
-                    <small>Formatos aceptados: JPG, PNG (max 5MB cada una, exactamente 5 al guardar)</small>
+                    <small>Formatos aceptados: JPG, PNG (máx 5MB cada una, exactamente 5 al guardar)</small>
                   </div>
 
                   {formData.imagenes.length > 0 && (
@@ -630,19 +634,18 @@ const PublicacionesViewVendedor = () => {
           <table className="table">
             <thead>
               <tr>
-                <th>ID</th>
+                <th>ID Vehículo</th>
                 <th>Vehículo</th>
                 <th>Descripción</th>
                 <th>Imágenes</th>
-                <th>Fecha</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {paginatedPublicaciones.length > 0 ? (
                 paginatedPublicaciones.map((publicacion) => (
-                  <tr key={publicacion.idPublicacion}>
-                    <td>{publicacion.idPublicacion}</td>
+                  <tr key={publicacion.idVehiculo || publicacion.idPublicacion}>
+                    <td>{publicacion.idVehiculo || 'N/A'}</td>
                     <td>{getVehiculoInfo(publicacion)}</td>
                     <td>
                       {publicacion.descripcion.length > 50
@@ -654,7 +657,7 @@ const PublicacionesViewVendedor = () => {
                         {publicacion.imagenes && publicacion.imagenes.length > 0 ? (
                           publicacion.imagenes.slice(0, 2).map((img, index) => (
                             <img
-                              key={`${publicacion.idPublicacion || publicacion.idVehiculo}-${index}`}
+                              key={`${publicacion.idVehiculo || publicacion.idPublicacion}-${index}`}
                               src={img}
                               alt={`Vehículo ${index + 1}`}
                               className="table-image-thumbnail"
@@ -669,7 +672,6 @@ const PublicacionesViewVendedor = () => {
                         )}
                       </div>
                     </td>
-                    <td>{publicacion.fecha}</td>
                     <td className="actions">
                       <button
                         className="btn-icon btn-warning"
@@ -690,7 +692,7 @@ const PublicacionesViewVendedor = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" className="no-results">
+                  <td colSpan="5" className="no-results">
                     No se encontraron publicaciones
                   </td>
                 </tr>

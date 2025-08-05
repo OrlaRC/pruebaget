@@ -107,6 +107,7 @@ const Home = () => {
                 display: 'flex',
                 alignItems: 'center',      // Centrado vertical
                 justifyContent: 'center',  // Centrado horizontal
+                
               }}
         >
           <div className="search-container">
