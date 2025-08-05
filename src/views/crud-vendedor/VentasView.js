@@ -46,7 +46,7 @@ const VentasView = () => {
 
     if (!accessToken && refreshToken) {
       try {
-        const res = await fetch('http://localhost:3000/api/auth/refresh', {
+        const res = await fetch('https://financiera-backend.vercel.app/api/auth/refresh', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ refreshToken })
@@ -72,7 +72,7 @@ const VentasView = () => {
       const accessToken = await getAccessToken();
       if (!accessToken) return;
 
-      const res = await fetch('http://localhost:3000/api/marcas', {
+      const res = await fetch('https://financiera-backend.vercel.app/api/marcas', {
         headers: { Authorization: `Bearer ${accessToken}` }
       });
       const { success, data } = await res.json();
@@ -91,7 +91,7 @@ const VentasView = () => {
       const accessToken = await getAccessToken();
       if (!accessToken || !user) return;
 
-      const res = await fetch('http://localhost:3000/api/catalogo', {
+      const res = await fetch('https://financiera-backend.vercel.app/api/catalogo', {
         headers: { Authorization: `Bearer ${accessToken}` }
       });
       const { success, data } = await res.json();
@@ -334,7 +334,7 @@ const VentasView = () => {
         comision: formData.comision || Math.round(parseFloat(formData.precioVenta) * 0.05)
       };
 
-      const res = await fetch('http://localhost:3000/api/ventas', {
+      const res = await fetch('https://financiera-backend.vercel.app/api/ventas', {
         method: editingId ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -380,7 +380,7 @@ const VentasView = () => {
         const accessToken = await getAccessToken();
         if (!accessToken) return;
 
-        const res = await fetch(`http://localhost:3000/api/ventas/${id}`, {
+        const res = await fetch(`https://financiera-backend.vercel.app/api/ventas/${id}`, {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${accessToken}` }
         });

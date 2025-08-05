@@ -27,7 +27,7 @@ const Desktop4 = () => {
     if (!idVehiculo) return;
     const fetchVehiculo = async () => {
       try {
-        const res = await fetch(`http://localhost:3000/api/catalogo/${idVehiculo}`);
+        const res = await fetch(`https://financiera-backend.vercel.app/api/catalogo/${idVehiculo}`);
         const data = await res.json();
         if (data.success) {
           setVehiculo(data.data);

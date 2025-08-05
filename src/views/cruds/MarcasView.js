@@ -42,7 +42,7 @@ const MarcasView = ({ showNotification }) => {
     if (!headers) return;
 
     let isMounted = true;
-    fetch('http://localhost:3000/api/marcas', { headers })
+    fetch('https://financiera-backend.vercel.app/api/marcas', { headers })
       .then(res => {
         if (res.status === 401) throw new Error('401');
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -108,7 +108,7 @@ const MarcasView = ({ showNotification }) => {
       fd.append('enlace_imagen', formData.enlace_imagen);
     }
 
-    let url = 'http://localhost:3000/api/marcas';
+    let url = 'https://financiera-backend.vercel.app/api/marcas';
     let method = 'POST';
     if (editingId) {
       url += `/${editingId}`;
@@ -163,7 +163,7 @@ const MarcasView = ({ showNotification }) => {
     const headers = getAuthHeaders(true);
     if (!headers) return;
 
-    fetch(`http://localhost:3000/api/marcas/${id}`, {
+    fetch(`https://financiera-backend.vercel.app/api/marcas/${id}`, {
       method: 'DELETE',
       headers
     })

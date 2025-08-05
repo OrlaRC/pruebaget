@@ -23,12 +23,12 @@ const Catalogo = () => {
     window.addEventListener('storage', checkAuth);
 
     // Cargar marcas
-    fetch('http://localhost:3000/api/marcas')
+    fetch('https://financiera-backend.vercel.app/api/marcas')
       .then(res => res.json())
       .then(data => { if (data.success) setMarcas(data.data); });
 
     // Cargar autos
-    fetch('http://localhost:3000/api/catalogo')
+    fetch('https://financiera-backend.vercel.app/api/catalogo')
       .then(res => res.json())
       .then(data => { if (data.success) setAutos(data.data); });
 

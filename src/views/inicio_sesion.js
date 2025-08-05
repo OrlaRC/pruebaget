@@ -24,7 +24,7 @@ const InicioSesion = () => {
 
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:3000/api/auth/login', {
+      const res = await fetch('https://financiera-backend.vercel.app/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -121,7 +121,7 @@ const InicioSesion = () => {
           <button
             className="desktop3-button4"
             type="button"
-            onClick={() => window.location.href = 'http://localhost:3000/api/auth/google'}
+            onClick={() => window.location.href = 'https://financiera-backend.vercel.app/api/auth/google'}
           >
             <img
               src="/external/google1317054511267-rgmw-200h.png"
