@@ -9,22 +9,16 @@
   ],
   "routes": [
     {
-      "src": "/_next/static/(?:[^/]+/pages|chunks|runtime|css|media)/.+",
-      "headers": { "cache-control": "public, max-age=31536000, immutable" }
-    },
-    {
       "src": "/static/(.*)",
       "dest": "/static/$1"
     },
     {
       "src": "/auth/callback",
-      "dest": "/src/index.html",
-      "headers": { "cache-control": "no-cache" }
+      "dest": "/src/index.js"
     },
     {
       "src": "/(.*)",
-      "dest": "/src/index.html",
-      "headers": { "cache-control": "no-cache" }
+      "dest": "/src/index.html"
     }
   ]
 }
