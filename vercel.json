@@ -8,7 +8,7 @@
   ],
   "routes": [
     {
-      "src": "/callback(?:\\?.*)?$",
+      "src": "/auth/callback(?:\\?.*)?$",
       "dest": "/src/callback.js"
     },
     {
