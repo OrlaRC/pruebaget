@@ -6,14 +6,18 @@
       "config": { "distDir": "build" }
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/src/callback(?:\\?.*)?$",
-      "dest": "/src/index.html"
+      "source": "/auth/callback/:path*",
+      "destination": "/src/index.html"
     },
     {
-      "src": "/(.*)",
-      "dest": "/src/index.html"
+      "source": "/info-auto/:path*",
+      "destination": "/src/index.html"
+    },
+    {
+      "source": "/:path*",
+      "destination": "/src/index.html"
     }
   ]
 }
