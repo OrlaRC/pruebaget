@@ -8,7 +8,7 @@
   ],
   "rewrites": [
     {
-      "source": "/src/info-auto(.*)",
+      "source": "/info-auto(.*)",
       "destination": "/src/index.html"
     },
     {
