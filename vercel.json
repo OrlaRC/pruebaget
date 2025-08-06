@@ -10,7 +10,7 @@
   ],
   "routes": [
     {
-      "src": "/info-auto",
+      "src": "/src/info-auto",
       "dest": "/src/index.html"
     },
     {
