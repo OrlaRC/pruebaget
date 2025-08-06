@@ -3,19 +3,17 @@
     {
       "src": "package.json",
       "use": "@vercel/static-build",
-      "config": {
-        "distDir": "build"
-      }
+      "config": { "distDir": "build" }
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/src/info-auto",
-      "dest": "/src/index.html"
+      "source": "/src/info-auto(.*)",
+      "destination": "/src/index.html"
     },
     {
-      "src": "/(.*)",
-      "dest": "/src/index.html"
+      "source": "/(.*)",
+      "destination": "/src/index.html"
     }
   ]
 }
