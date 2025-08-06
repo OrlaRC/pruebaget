@@ -92,30 +92,26 @@ const Home = () => {
         />
       </Helmet>
 
-      {/* Solo Header, que internamente maneja el menú según login */}
       <Header />
 
       <main>
-        {/* Barra de búsqueda con fondo GIF CarsGet */}
         <section
           className="search-section"
-         style={{
-                height: '600px',
-                backgroundImage: `url(${carsGif})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                display: 'flex',
-                alignItems: 'center',      // Centrado vertical
-                justifyContent: 'center',  // Centrado horizontal
-                
-              }}
+          style={{
+            height: '600px',
+            backgroundImage: `url(${carsGif})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
           <div className="search-container">
             <h2 className="search-title">Encuentra exactamente lo que buscas</h2>
           </div>
         </section>
 
-        {/* Logos de marcas dinámicos */}
         <section className="brands-section">
           <h2 className="section-title">¡DESCUBRE NUESTRO CATÁLOGO AQUÍ!</h2>
           {loadingBrands && <p>Cargando marcas...</p>}
@@ -131,7 +127,6 @@ const Home = () => {
           )}
         </section>
 
-        {/* Vehículos destacados */}
         <section className="featured-section">
           <h2 className="section-title">VEHÍCULOS DESTACADOS</h2>
           {loadingVehicles && <p>Cargando vehículos...</p>}
@@ -146,7 +141,8 @@ const Home = () => {
                   <button
                     className="mas-info-btn"
                     onClick={() => {
-                      window.location.href = `/info-auto?idVehiculo=${vehicle.idVehiculo}`;
+                      // Navegar sin mostrar idVehiculo en URL
+                      history.push('/info-auto', { idVehiculo: vehicle.idVehiculo });
                     }}
                   >
                     Más información
@@ -157,7 +153,6 @@ const Home = () => {
           )}
         </section>
 
-        {/* Testimonios */}
         <section className="testimonials-section">
           <h2 className="section-title">CONOCE LA EXPERIENCIA DE NUESTROS CLIENTES</h2>
           <div className="testimonials-carousel">
@@ -174,7 +169,6 @@ const Home = () => {
           </div>
         </section>
 
-        {/* Promociones */}
         <section className="promo-section">
           <div className="promo-item">
             <p>Solicitud digital con un</p>
@@ -190,7 +184,6 @@ const Home = () => {
           </div>
         </section>
 
-        {/* ¿Por qué elegirnos? */}
         <section className="why-choose-us">
           <h2 className="section-title">¿POR QUÉ ELEGIRNOS?</h2>
           <div className="benefits-grid">
