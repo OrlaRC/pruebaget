@@ -91,7 +91,7 @@ const VentasView = () => {
       const accessToken = await getAccessToken();
       if (!accessToken || !user) return;
 
-      const res = await fetch('https://financiera-backend.vercel.app/api/catalogo', {
+      const res = await fetch('https://financiera-backend.vercel.app/api/catalogo/admin', {
         headers: { Authorization: `Bearer ${accessToken}` }
       });
       const { success, data } = await res.json();

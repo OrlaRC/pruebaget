@@ -10,6 +10,10 @@
   ],
   "routes": [
     {
+      "src": "/info-auto",
+      "dest": "/src/index.html"
+    },
+    {
       "src": "/(.*)",
       "dest": "/src/index.html"
     }
