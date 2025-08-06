@@ -9,7 +9,7 @@
   "routes": [
     {
       "src": "/auth/callback(?:\\?.*)?$",
-      "dest": "/src/callback.js"
+      "dest": "/src/views/callback.js"
     },
     {
       "src": "/(.*)",
