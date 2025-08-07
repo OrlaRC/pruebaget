@@ -1,3 +1,5 @@
+// src/pages/Callback.js (o donde tengas este archivo)
+
 import React, { useEffect } from "react";
 import { useLocation, useHistory } from "react-router-dom";
 
@@ -9,19 +11,20 @@ const Callback = () => {
     const queryParams = new URLSearchParams(location.search);
     const accessToken = queryParams.get("accessToken");
     const refreshToken = queryParams.get("refreshToken");
+    const idUsuario = queryParams.get("idUsuario"); // ⬅️ nuevo
 
-    if (accessToken && refreshToken) {
-      // 1. Guardar tokens
+    if (accessToken && refreshToken && idUsuario) {
+      // Guardar en localStorage
       localStorage.setItem("accessToken", accessToken);
       localStorage.setItem("refreshToken", refreshToken);
+      localStorage.setItem("idUsuario", idUsuario); // ⬅️ nuevo
 
-      // 2. Limpiar URL
+      // Limpiar la URL
       window.history.replaceState({}, document.title, "/auth/callback");
 
-      // 3. Redirigir al Home
+      // Redirigir al home
       history.push("/");
     } else {
-      // Si no hay tokens, volver a login
       history.push("/login");
     }
   }, [location.search, history]);

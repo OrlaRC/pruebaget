@@ -4,6 +4,7 @@ import { useHistory, useLocation } from 'react-router-dom';
 import HeaderPrivado from './component/header';
 import Footer from './component/footer';
 import './info_auto.css';
+import Modal from 'react-modal';
 
 const InfoAuto = () => {
   const history = useHistory();
@@ -15,10 +16,33 @@ const InfoAuto = () => {
   const [mainImage, setMainImage] = useState('');
   const [thumbnails, setThumbnails] = useState([]);
   const [otrosVehiculos, setOthers] = useState([]);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   const idFromState = state?.idVehiculo;
   const storedId = localStorage.getItem('idVehiculo');
   const idVehiculo = idFromState || storedId;
+
+  // Verificar si el usuario está autenticado
+  const isAuthenticated = () => {
+    return !!localStorage.getItem('accessToken');
+  };
+
+  const handleCotizarClick = () => {
+    if (isAuthenticated()) {
+      history.push('/cotizacion');
+    } else {
+      setShowLoginModal(true);
+    }
+  };
+
+  const handleLoginRedirect = () => {
+    // Guardamos el vehículo actual para redirigir después del login
+    localStorage.setItem('redirectAfterLogin', JSON.stringify({
+      path: '/info-auto',
+      state: { idVehiculo }
+    }));
+    history.push('/login');
+  };
 
   useEffect(() => {
     if (idFromState) localStorage.setItem('idVehiculo', idFromState);
@@ -97,10 +121,9 @@ const InfoAuto = () => {
     }, 100);
   };
 
-  // ← aquí cambiamos split(',') por split(', ')
   const caracteristicasList = vehiculo.caracteristicas
     ? vehiculo.caracteristicas
-        .split(', ')      // ahora sólo parte donde hay "coma + espacio"
+        .split(', ')
         .map(item => item.trim())
     : [];
 
@@ -156,7 +179,7 @@ const InfoAuto = () => {
             <p className="precio">
               Precio: ${parseFloat(vehiculo.precio).toLocaleString()}
             </p>
-            <button className="cotiza-btn" onClick={() => history.push('/cotizacion')}>
+            <button className="cotiza-btn" onClick={handleCotizarClick}>
               ¡COTIZA AHORA!
             </button>
           </section>
@@ -179,6 +202,33 @@ const InfoAuto = () => {
         </section>
       </main>
       <Footer />
+
+      {/* Modal de inicio de sesión */}
+      <Modal
+        isOpen={showLoginModal}
+        onRequestClose={() => setShowLoginModal(false)}
+        className="login-modal"
+        overlayClassName="login-modal-overlay"
+      >
+        <div className="modal-content">
+          <h2>Inicia sesión para continuar</h2>
+          <p>Para poder cotizar este vehículo, necesitas iniciar sesión primero.</p>
+          <div className="modal-buttons">
+            <button 
+              className="modal-btn cancel"
+              onClick={() => setShowLoginModal(false)}
+            >
+              Cancelar
+            </button>
+            <button 
+              className="modal-btn confirm"
+              onClick={handleLoginRedirect}
+            >
+              Iniciar sesión
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
