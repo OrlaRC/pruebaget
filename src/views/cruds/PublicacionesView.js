@@ -11,7 +11,7 @@ const PublicacionesView = ({ showNotification }) => {
   const itemsPerPage = 10;
 
   // URL de la API (usando localhost por ahora)
-  const API_URL = 'http://localhost:3000/api/catalogo';
+  const API_URL = 'https://financiera-backend.vercel.app/api/catalogo';
 
   useEffect(() => {
     const fetchData = async () => {
