@@ -58,7 +58,7 @@ const PublicacionesViewVendedor = () => {
         return null;
       }
       try {
-        const res = await fetch('http://localhost:3000/ https://financiera-backend.vercel.app/api/auth/refresh', {
+        const res = await fetch('https://financiera-backend.vercel.app/api/auth/refresh', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ refreshToken }),
@@ -96,7 +96,7 @@ const PublicacionesViewVendedor = () => {
       if (!accessToken) return;
 
       try {
-        const marcasRes = await fetch('http://localhost:3000/ https://financiera-backend.vercel.app/api/marcas', {
+        const marcasRes = await fetch('https://financiera-backend.vercel.app/api/marcas', {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         if (!marcasRes.ok) throw new Error('Error al cargar marcas');
@@ -107,7 +107,7 @@ const PublicacionesViewVendedor = () => {
           throw new Error(marcasData.message || 'No se pudieron cargar las marcas');
         }
 
-        const publicacionesRes = await fetch('http://localhost:3000/ https://financiera-backend.vercel.app/api/catalogo/admin', {
+        const publicacionesRes = await fetch('https://financiera-backend.vercel.app/api/catalogo/admin', {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         if (!publicacionesRes.ok) throw new Error('Error al cargar publicaciones');
@@ -224,13 +224,13 @@ const PublicacionesViewVendedor = () => {
       setUploading(true);
       let res;
       if (editingId) {
-        res = await fetch(`http://localhost:3000/ https://financiera-backend.vercel.app/api/catalogo/${editingId}`, {
+        res = await fetch(`https://financiera-backend.vercel.app/api/catalogo/${editingId}`, {
           method: 'PUT',
           headers: { Authorization: `Bearer ${accessToken}` },
           body: formDataToSend,
         });
       } else {
-        res = await fetch('http://localhost:3000/ https://financiera-backend.vercel.app/api/catalogo', {
+        res = await fetch('https://financiera-backend.vercel.app/api/catalogo', {
           method: 'POST',
           headers: { Authorization: `Bearer ${accessToken}` },
           body: formDataToSend,
@@ -244,7 +244,7 @@ const PublicacionesViewVendedor = () => {
           editingId ? 'Publicación actualizada correctamente' : 'Publicación creada correctamente',
           'success'
         );
-        const publicacionesRes = await fetch('http://localhost:3000/ https://financiera-backend.vercel.app/api/catalogo/admin', {
+        const publicacionesRes = await fetch('https://financiera-backend.vercel.app/api/catalogo/admin', {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         if (publicacionesRes.ok) {
@@ -277,7 +277,7 @@ const PublicacionesViewVendedor = () => {
     if (!accessToken) return;
     try {
       const id = pub.idVehiculo || pub.idPublicacion;
-      const res = await fetch(`http://localhost:3000/ https://financiera-backend.vercel.app/api/catalogo/${id}`, {
+      const res = await fetch(`https://financiera-backend.vercel.app/api/catalogo/${id}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (!res.ok) throw new Error('Error en la respuesta del servidor');
@@ -324,7 +324,7 @@ const PublicacionesViewVendedor = () => {
     const accessToken = await getAccessToken();
     if (!accessToken) return;
     try {
-      const res = await fetch(`http://localhost:3000/ https://financiera-backend.vercel.app/api/catalogo/${id}`, {
+      const res = await fetch(`https://financiera-backend.vercel.app/api/catalogo/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${accessToken}` },
       });
@@ -332,7 +332,7 @@ const PublicacionesViewVendedor = () => {
       const data = await res.json();
       if (data.success) {
         debouncedShowNotification('Publicación eliminada correctamente', 'success');
-        const publicacionesRes = await fetch('http://localhost:3000/ https://financiera-backend.vercel.app/api/catalogo/admin', {
+        const publicacionesRes = await fetch('https://financiera-backend.vercel.app/api/catalogo/admin', {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         if (publicacionesRes.ok) {
