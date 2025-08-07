@@ -3,6 +3,7 @@ import { useHistory, useLocation } from 'react-router-dom';
 import Header from './component/header';
 import Footer from './component/footer';
 import { Helmet } from 'react-helmet';
+import Modal from 'react-modal';
 import './perfil.css';
 
 const Perfil = () => {
@@ -19,7 +20,8 @@ const Perfil = () => {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [successMessage, setSuccessMessage] = useState(null);
+  const [modalIsOpen, setModalIsOpen] = useState(false);
+  const [modalMessage, setModalMessage] = useState('');
 
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
@@ -92,7 +94,6 @@ const Perfil = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
-    setSuccessMessage(null);
 
     try {
       const token = localStorage.getItem('accessToken');
@@ -110,7 +111,6 @@ const Perfil = () => {
         return;
       }
 
-      // Construye payload sin incluir password si está vacío
       const payload = {
         nombre: userData.nombre,
         telefono: userData.telefono,
@@ -137,7 +137,7 @@ const Perfil = () => {
 
         try {
           const contentType = response.headers.get('content-type');
-          if (contentType && contentType.includes('application/json')) {
+          if (contentType?.includes('application/json')) {
             const errorData = await response.json();
             errorMessage = errorData.message || errorMessage;
           } else {
@@ -151,8 +151,7 @@ const Perfil = () => {
         throw new Error(errorMessage);
       }
 
-      setSuccessMessage('Perfil actualizado correctamente');
-
+      // Guardar en localStorage
       const storedUser = JSON.parse(localStorage.getItem('user')) || {};
       localStorage.setItem(
         'user',
@@ -163,9 +162,18 @@ const Perfil = () => {
           direccion: userData.direccion
         })
       );
+
+      setModalMessage('Perfil actualizado correctamente');
+      setModalIsOpen(true);
     } catch (err) {
       setError(err.message);
     }
+  };
+
+  const cerrarModal = () => {
+    setModalIsOpen(false);
+    setModalMessage('');
+    window.location.reload(); // Recarga la página al cerrar modal
   };
 
   return (
@@ -182,7 +190,6 @@ const Perfil = () => {
           <h2 className="section-title">Mi Perfil</h2>
           {loading && <p>Cargando datos...</p>}
           {error && <p className="error-message">{error}</p>}
-          {successMessage && <p className="success-message">{successMessage}</p>}
 
           {!loading && (
             <div className="form-container">
@@ -244,6 +251,31 @@ const Perfil = () => {
       </main>
 
       <Footer />
+
+      <Modal
+        isOpen={modalIsOpen}
+        onRequestClose={cerrarModal}
+        className="custom-modal"
+        overlayClassName="custom-modal-overlay"
+      >
+        <div style={{ padding: '1rem', textAlign: 'center' }}>
+          <p style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>{modalMessage}</p>
+          <button
+            onClick={cerrarModal}
+            style={{
+              backgroundColor: '#f8791d',
+              color: 'white',
+              border: 'none',
+              padding: '0.5rem 1rem',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+            }}
+          >
+            Aceptar
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 };
