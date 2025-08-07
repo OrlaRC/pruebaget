@@ -47,7 +47,7 @@ const FinanciamientoView = () => {
 
     if (!accessToken && refreshToken) {
       try {
-        const res = await fetch('https://financiera-backend.vercel.app/api/auth/refresh', {
+        const res = await fetch('http://localhost:3000/api/auth/refresh', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ refreshToken })
@@ -74,7 +74,7 @@ const FinanciamientoView = () => {
       const accessToken = await getAccessToken();
       if (!accessToken) return;
 
-      const res = await fetch('https://financiera-backend.vercel.app/api/marcas', {
+      const res = await fetch('http://localhost:3000/api/marcas', {
         headers: { Authorization: `Bearer ${accessToken}` }
       });
       const { success, data } = await res.json();
@@ -95,7 +95,7 @@ const FinanciamientoView = () => {
       const accessToken = await getAccessToken();
       if (!accessToken || !user) return;
 
-      const res = await fetch('https://financiera-backend.vercel.app/api/catalogo', {
+      const res = await fetch('http://localhost:3000/api/catalogo', {
         headers: { Authorization: `Bearer ${accessToken}` }
       });
       const { success, data } = await res.json();

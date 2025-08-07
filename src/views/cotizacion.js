@@ -1,3 +1,4 @@
+/* src/pages/Desktop4.js */
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
 import { Link, useLocation, useHistory } from 'react-router-dom';
@@ -5,16 +6,6 @@ import HeaderPrivado from './component/header';
 import Footer from './component/footer';
 import Modal from 'react-modal';
 import './cotizacion.css';
-
-function parseJwt(token) {
-  try {
-    const base64Payload = token.split('.')[1];
-    const payload = atob(base64Payload);
-    return JSON.parse(payload);
-  } catch (e) {
-    return null;
-  }
-}
 
 const Desktop4 = () => {
   const history = useHistory();
@@ -24,9 +15,11 @@ const Desktop4 = () => {
   const [thumbnails, setThumbnails] = useState([]);
   const [enganche, setEnganche] = useState('');
   const [plazo, setPlazo] = useState('');
+  const [mensualidad, setMensualidad] = useState(null);
   const [modalMessage, setModalMessage] = useState('');
   const [modalIsOpen, setModalIsOpen] = useState(false);
-  const [idCliente, setIdCliente] = useState(null); // 👈 guardar idCliente
+  const [idCliente, setIdCliente] = useState(null);
+  const [cotizacionEnviada, setCotizacionEnviada] = useState(false);
 
   const idVehiculo = state?.idVehiculo || localStorage.getItem('idVehiculo');
 
@@ -40,7 +33,7 @@ const Desktop4 = () => {
     if (!idVehiculo) return;
     const fetchVehiculo = async () => {
       try {
-        const res = await fetch(`https://financiera-backend.vercel.app/api/catalogo/${idVehiculo}`);
+        const res = await fetch(`http://localhost:3000/api/catalogo/${idVehiculo}`);
         const data = await res.json();
         if (data.success) {
           setVehiculo(data.data);
@@ -67,7 +60,7 @@ const Desktop4 = () => {
     setModalMessage('');
   };
 
-  const calcularMensualidad = async () => {
+  const calcularMensualidad = () => {
     if (enganche === '') {
       abrirModal('Por favor, ingresa el monto de enganche.');
       return;
@@ -79,6 +72,7 @@ const Desktop4 = () => {
 
     const montoEngancheNum = parseFloat(enganche);
     const plazoNum = parseInt(plazo);
+    const precio = parseFloat(vehiculo.precio);
 
     if (isNaN(montoEngancheNum) || montoEngancheNum < 0) {
       abrirModal('El monto de enganche debe ser un número válido y mayor o igual a 0.');
@@ -90,28 +84,40 @@ const Desktop4 = () => {
       return;
     }
 
-    if (!vehiculo) return;
-
-    const precio = parseFloat(vehiculo.precio);
     if (montoEngancheNum > precio) {
       abrirModal('El monto de enganche no puede ser mayor al precio del vehículo.');
       return;
     }
 
+    const restante = precio - montoEngancheNum;
+    const mensual = restante / plazoNum;
+
+    setMensualidad(mensual);
+  };
+
+  const enviarCotizacion = async () => {
+    if (mensualidad === null) {
+      abrirModal('Primero calcula la mensualidad antes de enviar la cotización.');
+      return;
+    }
+
+    const precio = parseFloat(vehiculo.precio);
+    const montoEngancheNum = parseFloat(enganche);
+    const plazoNum = parseInt(plazo);
     const accessToken = localStorage.getItem('accessToken');
+    const clienteId = parseInt(localStorage.getItem('idUsuario'), 10);
+
     if (!accessToken) {
       abrirModal('No estás autenticado. Por favor inicia sesión.');
       return;
     }
 
-    const decoded = parseJwt(accessToken);
-    if (!decoded || !decoded.idCliente) {
-      abrirModal('Token inválido o no contiene idCliente.');
+    if (!clienteId) {
+      abrirModal('No se encontró el id de usuario. Por favor inicia sesión de nuevo.');
       return;
     }
 
-    const clienteId = decoded.idCliente;
-    setIdCliente(clienteId); // 👈 guardar en estado
+    setIdCliente(clienteId);
 
     const payload = {
       idCliente: clienteId,
@@ -125,7 +131,7 @@ const Desktop4 = () => {
     };
 
     try {
-      const res = await fetch('https://financiera-backend.vercel.app/api/cotizaciones', {
+      const res = await fetch('http://localhost:3000/api/cotizaciones', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -133,10 +139,12 @@ const Desktop4 = () => {
         },
         body: JSON.stringify(payload)
       });
+
       const result = await res.json();
 
       if (res.ok) {
-        abrirModal('Cotización enviada correctamente. Nos pondremos en contacto contigo pronto.');
+        abrirModal('Cotización enviada correctamente.');
+        setCotizacionEnviada(true);
       } else {
         abrirModal(result.message || 'Error al enviar la cotización.');
       }
@@ -190,27 +198,60 @@ const Desktop4 = () => {
               <option value="60">60</option>
             </select>
 
-            <button className="desktop4-button" onClick={calcularMensualidad}>
-              CALCULA Y ENVÍA TU COTIZACIÓN
+            {mensualidad !== null && (
+              <>
+                <label>Mensualidad:</label>
+                <input
+                  type="text"
+                  value={`$${Number(mensualidad).toLocaleString()}`}
+                  disabled
+                />
+              </>
+            )}
+
+            <button
+              className="desktop4-button"
+              onClick={calcularMensualidad}
+              style={{ minWidth: '180px' }}
+            >
+              CALCULAR MENSUALIDAD
             </button>
 
-            <Link to={{
-              pathname: "/solicitud-credito",
-              state: {
-                idCliente,
-                cotizacionData: {
-                  idVehiculo: vehiculo.idVehiculo,
-                  idVendedor: vehiculo.idVendedor,
-                  enganche: parseFloat(enganche),
-                  plazos: parseInt(plazo),
-                  precioNeto: parseFloat(vehiculo.precio),
+            <button
+              className="desktop4-button"
+              onClick={enviarCotizacion}
+              disabled={mensualidad === null}
+              title={mensualidad === null ? "Primero calcula la mensualidad" : ""}
+              style={{
+                opacity: mensualidad === null ? 0.5 : 1,
+                cursor: mensualidad === null ? 'not-allowed' : 'pointer',
+                minWidth: '180px',
+
+              }}
+            >
+              ENVIAR COTIZACIÓN
+            </button>
+
+            {cotizacionEnviada && (
+              <Link to={{
+                pathname: "/solicitud-credito",
+                state: {
+                  idCliente,
+                  cotizacionData: {
+                    idVehiculo: vehiculo.idVehiculo,
+                    idVendedor: vehiculo.idVendedor,
+                    enganche: parseFloat(enganche),
+                    plazos: parseInt(plazo),
+                    precioNeto: parseFloat(vehiculo.precio),
+                    mensualidad: mensualidad
+                  }
                 }
-              }
-            }}>
-              <button className="desktop4-button">
-                SOLICITUD DE CRÉDITO
-              </button>
-            </Link>
+              }}>
+                <button className="desktop4-button" style={{ marginTop: '1rem' }}>
+                  SOLICITUD DE CRÉDITO
+                </button>
+              </Link>
+            )}
           </div>
 
           <div className="desktop4-requisitos">

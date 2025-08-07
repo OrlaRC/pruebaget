@@ -43,7 +43,7 @@ const Perfil = () => {
     }
 
     // Petición GET para obtener los datos actualizados del usuario
-    fetch(`https://financiera-backend.vercel.app/api/usuarios/${userId}`, {
+    fetch(`http://localhost:3000/api/usuarios/${userId}`, {
       headers: {
         Authorization: `Bearer ${token}`
       }
@@ -96,7 +96,7 @@ const Perfil = () => {
       const storedUser = JSON.parse(localStorage.getItem('user'));
       const userId = storedUser.id || storedUser.idUsuario || storedUser.userId;
 
-      const response = await fetch(`https://financiera-backend.vercel.app/api/usuarios/${userId}`, {
+      const response = await fetch(`http://localhost:3000/api/usuarios/${userId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
