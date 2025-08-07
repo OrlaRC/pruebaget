@@ -7,12 +7,21 @@ const Header = () => {
   const location = useLocation();
   const path = location.pathname;
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userId, setUserId] = useState(null);
 
   useEffect(() => {
     // Verificar si hay token en localStorage
     const token = localStorage.getItem('accessToken');
     setIsLoggedIn(!!token);
-  }, [location]); // Actualiza cuando cambia la ruta
+
+    // Leer idUsuario directamente desde localStorage igual que en Desktop4.js
+    const storedUserId = localStorage.getItem('idUsuario');
+    if (storedUserId) {
+      setUserId(parseInt(storedUserId, 10));
+    } else {
+      setUserId(null);
+    }
+  }, [location]);
 
   const handleLogoClick = () => {
     history.push('/');
@@ -22,8 +31,9 @@ const Header = () => {
     // Eliminar tokens y redirigir
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
+    localStorage.removeItem('idUsuario');
     setIsLoggedIn(false);
+    setUserId(null);
     history.push('/');
   };
 
@@ -52,11 +62,16 @@ const Header = () => {
         {path !== '/contacto' && <Link to="/contacto" className="header-nav-link">Contacto</Link>}
         {path !== '/testimonios' && <Link to="/testimonios" className="header-nav-link">Testimonios</Link>}
         {path !== '/sucursales' && <Link to="/sucursales" className="header-nav-link">Sucursales</Link>}
-        {/* Mostrar Perfil y Cerrar sesión si está logueado */}
         {isLoggedIn ? (
           <>
             {path !== '/perfil' && (
-              <Link to="/perfil" className="header-nav-link">
+              <Link
+                to={{
+                  pathname: '/perfil',
+                  state: { idCliente: userId }, // pasamos idUsuario igual que Desktop4.js
+                }}
+                className="header-nav-link"
+              >
                 Perfil
               </Link>
             )}

@@ -35,13 +35,13 @@ const DashboardView = ({ showNotification }) => {
 
       try {
         // Fetch usuarios
-        const usuariosRes = await axios.get('https://financiera-backend.vercel.app/api/usuarios', { headers });
+        const usuariosRes = await axios.get('http://localhost:3000/api/usuarios', { headers });
         if (usuariosRes.data.success) {
           const usuarios = usuariosRes.data.data;
           const vendedores = usuarios.filter(u => u.idRol === 2).length;
 
           // Fetch vehiculos
-          const vehiculosRes = await axios.get('https://financiera-backend.vercel.app/api/catalogo', { headers });
+          const vehiculosRes = await axios.get('http://localhost:3000/api/catalogo', { headers });
           const vehiculosCount = vehiculosRes.data.success ? vehiculosRes.data.data.length : 0;
 
           // Update stats
