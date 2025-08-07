@@ -17,7 +17,7 @@ const VistaMarca = () => {
   // Cargar nombre de la marca si no viene en state
   useEffect(() => {
     if (!state?.nombre && idMarca) {
-      fetch(`http://localhost:3000/api/marcas/${idMarca}`)
+      fetch(`http://localhost:3000/ https://financiera-backend.vercel.app/api/marcas/${idMarca}`)
         .then(res => res.json())
         .then(data => {
           if (data.success && data.data?.nombre_marca) {
@@ -31,7 +31,7 @@ const VistaMarca = () => {
   // Cargar autos de la marca
   useEffect(() => {
     if (!idMarca) return;
-    fetch(`http://localhost:3000/api/marcas/${idMarca}/vehiculos`)
+    fetch(`http://localhost:3000/ https://financiera-backend.vercel.app/api/marcas/${idMarca}/vehiculos`)
       .then(res => res.json())
       .then(data => {
         if (data.success) {

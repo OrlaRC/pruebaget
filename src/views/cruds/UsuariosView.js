@@ -54,7 +54,7 @@ const UsuariosView = ({ showNotification }) => {
     const fetchUsuarios = async () => {
       const token = localStorage.getItem('accessToken');
       try {
-        const json = await fetchWithValidation('http://localhost:3000/api/usuarios', {
+        const json = await fetchWithValidation('http://localhost:3000/ https://financiera-backend.vercel.app/api/usuarios', {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -142,12 +142,12 @@ const UsuariosView = ({ showNotification }) => {
     const token = localStorage.getItem('accessToken');
 
     try {
-      let url = 'http://localhost:3000/api/usuarios';
+      let url = 'http://localhost:3000/ https://financiera-backend.vercel.app/api/usuarios';
       let method = 'POST';
       let bodyData = {};
 
       if (editingId) {
-        url = `http://localhost:3000/api/usuarios/${editingId}`;
+        url = `http://localhost:3000/ https://financiera-backend.vercel.app/api/usuarios/${editingId}`;
         method = 'PUT';
         bodyData = {
           nombre: formData.nombre,
@@ -232,7 +232,7 @@ const UsuariosView = ({ showNotification }) => {
     if (window.confirm('¿Estás seguro de eliminar este usuario?')) {
       const token = localStorage.getItem('accessToken');
       try {
-        await fetchWithValidation(`http://localhost:3000/api/usuarios/${id}`, {
+        await fetchWithValidation(`http://localhost:3000/ https://financiera-backend.vercel.app/api/usuarios/${id}`, {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token}` }
         });

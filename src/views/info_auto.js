@@ -52,7 +52,7 @@ const InfoAuto = () => {
     if (!idVehiculo) return;
     const fetchVehiculo = async () => {
       try {
-        const res = await fetch(`http://localhost:3000/api/catalogo/${idVehiculo}`);
+        const res = await fetch(`http://localhost:3000/ https://financiera-backend.vercel.app/api/catalogo/${idVehiculo}`);
         const { success, data: v } = await res.json();
         if (success) {
           setVehiculo(v);
@@ -62,7 +62,7 @@ const InfoAuto = () => {
             setThumbnails(imgs.slice(1));
           }
           if (v.idMarca) {
-            const r = await fetch(`http://localhost:3000/api/marcas/${v.idMarca}`);
+            const r = await fetch(`http://localhost:3000/ https://financiera-backend.vercel.app/api/marcas/${v.idMarca}`);
             const { data: bd } = await r.json();
             setBrandName(bd?.nombre_marca || '');
           }
@@ -79,7 +79,7 @@ const InfoAuto = () => {
   useEffect(() => {
     const fetchOthers = async () => {
       try {
-        const res = await fetch('http://localhost:3000/api/catalogo');
+        const res = await fetch('http://localhost:3000/ https://financiera-backend.vercel.app/api/catalogo');
         const { success, data } = await res.json();
         if (success) {
           setOthers(

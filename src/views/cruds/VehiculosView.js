@@ -42,7 +42,7 @@ const VehiculosView = ({ showNotification }) => {
     const headers = getAuthHeaders(true);
     if (!headers) return;
     try {
-      const res = await axios.get('http://localhost:3000/api/catalogo/admin', { headers });
+      const res = await axios.get('http://localhost:3000/ https://financiera-backend.vercel.app/api/catalogo/admin', { headers });
       if (res.data.success) setVehiculos(res.data.data);
     } catch {
       showNotification?.('Error al cargar vehículos', 'error');
@@ -53,7 +53,7 @@ const VehiculosView = ({ showNotification }) => {
     const headers = getAuthHeaders(true);
     if (!headers) return;
     try {
-      const res = await axios.get('http://localhost:3000/api/marcas', { headers });
+      const res = await axios.get('http://localhost:3000/ https://financiera-backend.vercel.app/api/marcas', { headers });
       if (res.data.success) setMarcas(res.data.data);
     } catch {
       showNotification?.('Error al cargar marcas', 'error');
@@ -64,7 +64,7 @@ const VehiculosView = ({ showNotification }) => {
     const headers = getAuthHeaders(true);
     if (!headers) return;
     try {
-      const res = await axios.get('http://localhost:3000/api/usuarios', { headers });
+      const res = await axios.get('http://localhost:3000/ https://financiera-backend.vercel.app/api/usuarios', { headers });
       if (res.data.success) {
         setVendedores(res.data.data.filter(u => u.idRol === 2));
       }
@@ -113,12 +113,12 @@ const VehiculosView = ({ showNotification }) => {
     try {
       if (editingId) {
         await axios.put(
-          `http://localhost:3000/api/catalogo/${editingId}`, fd, { headers }
+          `http://localhost:3000/ https://financiera-backend.vercel.app/api/catalogo/${editingId}`, fd, { headers }
         );
         showNotification?.('Vehículo actualizado correctamente');
       } else {
         await axios.post(
-          'http://localhost:3000/api/catalogo', fd, { headers }
+          'http://localhost:3000/ https://financiera-backend.vercel.app/api/catalogo', fd, { headers }
         );
         showNotification?.('Vehículo creado correctamente');
       }
@@ -133,7 +133,7 @@ const VehiculosView = ({ showNotification }) => {
     if (!headers) return;
     try {
       const res = await axios.get(
-        `http://localhost:3000/api/catalogo/${v.idVehiculo}`, { headers }
+        `http://localhost:3000/ https://financiera-backend.vercel.app/api/catalogo/${v.idVehiculo}`, { headers }
       );
       if (res.data.success) {
         const d = res.data.data;
@@ -166,7 +166,7 @@ const VehiculosView = ({ showNotification }) => {
     if (!headers) return;
     try {
       await axios.delete(
-        `http://localhost:3000/api/catalogo/${id}`, { headers }
+        `http://localhost:3000/ https://financiera-backend.vercel.app/api/catalogo/${id}`, { headers }
       );
       showNotification?.('Vehículo eliminado correctamente');
       fetchVehiculos();

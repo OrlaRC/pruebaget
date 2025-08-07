@@ -35,7 +35,7 @@ const Registro = () => {
     setLoading(true);
     try {
       // 1) Registrar usuario
-      const registerRes = await fetch('http://localhost:3000/api/usuarios/register', {
+      const registerRes = await fetch('http://localhost:3000/ https://financiera-backend.vercel.app/api/usuarios/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -53,7 +53,7 @@ const Registro = () => {
       }
 
       // 2) Loguear automáticamente
-      const loginRes = await fetch('http://localhost:3000/api/auth/login', {
+      const loginRes = await fetch('http://localhost:3000/ https://financiera-backend.vercel.app/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -173,7 +173,7 @@ const Registro = () => {
           type="button"
           className="desktop-button google-button"
           onClick={() => {
-            window.location.href = 'http://localhost:3000/api/auth/google';
+            window.location.href = 'http://localhost:3000/ https://financiera-backend.vercel.app/api/auth/google';
           }}
         >
           <img
