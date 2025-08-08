@@ -17,12 +17,12 @@ const InfoAuto = () => {
   const [thumbnails, setThumbnails] = useState([]);
   const [otrosVehiculos, setOthers] = useState([]);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [mensaje, setMensaje] = useState('');
 
   const idFromState = state?.idVehiculo;
   const storedId = localStorage.getItem('idVehiculo');
   const idVehiculo = idFromState || storedId;
 
-  // Verificar si el usuario está autenticado
   const isAuthenticated = () => {
     return !!localStorage.getItem('accessToken');
   };
@@ -36,13 +36,22 @@ const InfoAuto = () => {
   };
 
   const handleLoginRedirect = () => {
-    // Guardamos el vehículo actual para redirigir después del login
     localStorage.setItem('redirectAfterLogin', JSON.stringify({
       path: '/info-auto',
       state: { idVehiculo }
     }));
     history.push('/login');
   };
+
+  useEffect(() => {
+    if (state?.mensaje) {
+      setMensaje(state.mensaje);
+      const timer = setTimeout(() => {
+        setMensaje('');
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [state]);
 
   useEffect(() => {
     if (idFromState) localStorage.setItem('idVehiculo', idFromState);
@@ -52,7 +61,7 @@ const InfoAuto = () => {
     if (!idVehiculo) return;
     const fetchVehiculo = async () => {
       try {
-        const res = await fetch(`https://financiera-backend.vercel.app/api/catalogo/${idVehiculo}`);
+        const res = await fetch(`http://localhost:3000/ https://financiera-backend.vercel.app/api/catalogo/${idVehiculo}`);
         const { success, data: v } = await res.json();
         if (success) {
           setVehiculo(v);
@@ -62,7 +71,7 @@ const InfoAuto = () => {
             setThumbnails(imgs.slice(1));
           }
           if (v.idMarca) {
-            const r = await fetch(`https://financiera-backend.vercel.app/api/marcas/${v.idMarca}`);
+            const r = await fetch(`http://localhost:3000/ https://financiera-backend.vercel.app/api/marcas/${v.idMarca}`);
             const { data: bd } = await r.json();
             setBrandName(bd?.nombre_marca || '');
           }
@@ -79,7 +88,7 @@ const InfoAuto = () => {
   useEffect(() => {
     const fetchOthers = async () => {
       try {
-        const res = await fetch('https://financiera-backend.vercel.app/api/catalogo');
+        const res = await fetch('http://localhost:3000/ https://financiera-backend.vercel.app/api/catalogo');
         const { success, data } = await res.json();
         if (success) {
           setOthers(
@@ -91,18 +100,30 @@ const InfoAuto = () => {
     fetchOthers();
   }, [idVehiculo]);
 
-  if (!idVehiculo) return <div>No se ha especificado el vehículo.</div>;
-  if (!vehiculo) return (
-    <div style={{
-      textAlign: 'center', padding: '2rem',
-      position: 'fixed', top: 0, width: '100%',
-      background: 'rgba(0,0,0,0.7)', color: 'white', zIndex: 1000
-    }}>
-      Cargando información del vehículo...
-    </div>
-  );
+  if (!idVehiculo) {
+    return React.createElement('div', null, 'No se ha especificado el vehículo.');
+  }
 
-  const handleThumbnailClick = idx => {
+  if (!vehiculo) {
+    return React.createElement(
+      'div',
+      {
+        style: {
+          textAlign: 'center',
+          padding: '2rem',
+          position: 'fixed',
+          top: 0,
+          width: '100%',
+          background: 'rgba(0,0,0,0.7)',
+          color: 'white',
+          zIndex: 1000
+        }
+      },
+      'Cargando información del vehículo...'
+    );
+  }
+
+  const handleThumbnailClick = (idx) => {
     const clicked = thumbnails[idx];
     const newThumbs = [...thumbnails];
     newThumbs[idx] = mainImage;
@@ -110,7 +131,7 @@ const InfoAuto = () => {
     setThumbnails(newThumbs);
   };
 
-  const handleVehicleClick = id => {
+  const handleVehicleClick = (id) => {
     history.push('/info-auto', { idVehiculo: id });
     setTimeout(() => {
       if (titleRef.current) {
@@ -122,114 +143,253 @@ const InfoAuto = () => {
   };
 
   const caracteristicasList = vehiculo.caracteristicas
-    ? vehiculo.caracteristicas
-        .split(', ')
-        .map(item => item.trim())
+    ? vehiculo.caracteristicas.split(', ').map(item => item.trim())
     : [];
 
-  return (
-    <div className="desktop2-container">
-      <Helmet>
-        <title>{vehiculo.modelo} | CARS GET</title>
-      </Helmet>
-      <HeaderPrivado />
-      <main className="desktop2-main">
-        <div className="titulo-busqueda" ref={titleRef}>
-          <h1>{vehiculo.modelo} {vehiculo.version}</h1>
-        </div>
-        <div className="detalle-principal">
-          <section className="galeria-principal">
-            <div className="imagen-principal">
-              <img src="/external/rectangle34750521211-zpe8-1000h.png" alt="Fondo" />
-              <img src={mainImage} alt="Principal" className="vehiculo" />
-            </div>
-            <div className="miniaturas">
-              {thumbnails.map((src, i) => (
-                <img
-                  key={i}
-                  src={src}
-                  alt={`Vista ${i+2}`}
-                  onClick={() => handleThumbnailClick(i)}
-                />
-              ))}
-            </div>
-          </section>
-          <section className="info-vehiculo descripcion-ancha">
-            <h2>Descripción</h2>
-            <ul>
-              <li><strong>Marca:</strong> <span title={brandName}>{brandName}</span></li>
-              <li><strong>Modelo:</strong> {vehiculo.modelo}</li>
-              <li><strong>Versión:</strong> {vehiculo.version}</li>
-              <li><strong>Año:</strong> {vehiculo.ano}</li>
-              <li><strong>Transmisión:</strong> {vehiculo.transmision}</li>
-              <li><strong>Kilometraje:</strong> {vehiculo.kilometraje} km</li>
-              <li><strong>Combustible:</strong> {vehiculo.tipoCombustible}</li>
-            </ul>
-            <p className="descripcion-detalle">{vehiculo.descripcion}</p>
-            {caracteristicasList.length > 0 && (
-              <>
-                <h2>Características</h2>
-                <ul>
-                  {caracteristicasList.map((carac, i) => (
-                    <li key={i}>{carac}</li>
-                  ))}
-                </ul>
-              </>
-            )}
-            <p className="precio">
-              Precio: ${parseFloat(vehiculo.precio).toLocaleString()}
-            </p>
-            <button className="cotiza-btn" onClick={handleCotizarClick}>
-              ¡COTIZA AHORA!
-            </button>
-          </section>
-        </div>
-        <section className="otros-vehiculos">
-          <h2>OTROS VEHÍCULOS</h2>
-          <div className="galeria-otros">
-            {otrosVehiculos.map(auto => (
-              <div key={auto.idVehiculo} className="producto">
-                <img src={auto.imagenes[0]||''} alt={auto.modelo} />
-                <span className="marca">{auto.modelo}</span>
-                <span className="año">{auto.ano}</span>
-                <span className="precio">${Number(auto.precio).toLocaleString()}</span>
-                <button className="mas-info" onClick={() => handleVehicleClick(auto.idVehiculo)}>
-                  Más información
-                </button>
-              </div>
-            ))}
-          </div>
-        </section>
-      </main>
-      <Footer />
-
-      {/* Modal de inicio de sesión */}
-      <Modal
-        isOpen={showLoginModal}
-        onRequestClose={() => setShowLoginModal(false)}
-        className="login-modal"
-        overlayClassName="login-modal-overlay"
-      >
-        <div className="modal-content">
-          <h2>Inicia sesión para continuar</h2>
-          <p>Para poder cotizar este vehículo, necesitas iniciar sesión primero.</p>
-          <div className="modal-buttons">
-            <button 
-              className="modal-btn cancel"
-              onClick={() => setShowLoginModal(false)}
-            >
-              Cancelar
-            </button>
-            <button 
-              className="modal-btn confirm"
-              onClick={handleLoginRedirect}
-            >
-              Iniciar sesión
-            </button>
-          </div>
-        </div>
-      </Modal>
-    </div>
+  return React.createElement(
+    'div',
+    { className: 'desktop2-container' },
+    [
+      React.createElement(
+        Helmet,
+        { key: 'helmet' },
+        React.createElement('title', null, `${vehiculo.modelo} | CARS GET`)
+      ),
+      React.createElement(HeaderPrivado, { key: 'header' }),
+      mensaje && React.createElement(
+        'div',
+        { className: 'mensaje-confirmacion', key: 'mensaje' },
+        mensaje
+      ),
+      React.createElement(
+        'main',
+        { className: 'desktop2-main', key: 'main' },
+        [
+          React.createElement(
+            'div',
+            { className: 'titulo-busqueda', ref: titleRef, key: 'titulo' },
+            React.createElement(
+              'h1',
+              null,
+              `${vehiculo.modelo} ${vehiculo.version}`
+            )
+          ),
+          React.createElement(
+            'div',
+            { className: 'detalle-principal', key: 'detalle' },
+            [
+              React.createElement(
+                'section',
+                { className: 'galeria-principal', key: 'galeria' },
+                [
+                  React.createElement(
+                    'div',
+                    { className: 'imagen-principal', key: 'imagen-principal' },
+                    [
+                      React.createElement('img', {
+                        src: '/external/rectangle34750521211-zpe8-1000h.png',
+                        alt: 'Fondo',
+                        key: 'fondo'
+                      }),
+                      React.createElement('img', {
+                        src: mainImage,
+                        alt: 'Principal',
+                        className: 'vehiculo',
+                        key: 'principal'
+                      })
+                    ]
+                  ),
+                  React.createElement(
+                    'div',
+                    { className: 'miniaturas', key: 'miniaturas' },
+                    thumbnails.map((src, i) =>
+                      React.createElement('img', {
+                        key: i,
+                        src: src,
+                        alt: `Vista ${i+2}`,
+                        onClick: () => handleThumbnailClick(i)
+                      })
+                    )
+                  )
+                ]
+              ),
+              React.createElement(
+                'section',
+                { className: 'info-vehiculo descripcion-ancha', key: 'info' },
+                [
+                  React.createElement('h2', { key: 'desc-titulo' }, 'Descripción'),
+                  React.createElement(
+                    'ul',
+                    { key: 'desc-lista' },
+                    [
+                      React.createElement('li', { key: 'marca' }, [
+                        React.createElement('strong', null, 'Marca:'),
+                        ' ',
+                        React.createElement('span', { title: brandName }, brandName)
+                      ]),
+                      React.createElement('li', { key: 'modelo' }, [
+                        React.createElement('strong', null, 'Modelo:'),
+                        ' ',
+                        vehiculo.modelo
+                      ]),
+                      React.createElement('li', { key: 'version' }, [
+                        React.createElement('strong', null, 'Versión:'),
+                        ' ',
+                        vehiculo.version
+                      ]),
+                      React.createElement('li', { key: 'ano' }, [
+                        React.createElement('strong', null, 'Año:'),
+                        ' ',
+                        vehiculo.ano
+                      ]),
+                      React.createElement('li', { key: 'transmision' }, [
+                        React.createElement('strong', null, 'Transmisión:'),
+                        ' ',
+                        vehiculo.transmision
+                      ]),
+                      React.createElement('li', { key: 'kilometraje' }, [
+                        React.createElement('strong', null, 'Kilometraje:'),
+                        ' ',
+                        `${vehiculo.kilometraje} km`
+                      ]),
+                      React.createElement('li', { key: 'combustible' }, [
+                        React.createElement('strong', null, 'Combustible:'),
+                        ' ',
+                        vehiculo.tipoCombustible
+                      ])
+                    ]
+                  ),
+                  React.createElement(
+                    'p',
+                    { className: 'descripcion-detalle', key: 'desc-detalle' },
+                    vehiculo.descripcion
+                  ),
+                  caracteristicasList.length > 0 && [
+                    React.createElement('h2', { key: 'carac-titulo' }, 'Características'),
+                    React.createElement(
+                      'ul',
+                      { key: 'carac-lista' },
+                      caracteristicasList.map((carac, i) =>
+                        React.createElement('li', { key: i }, carac)
+                      )
+                    )
+                  ],
+                  React.createElement(
+                    'p',
+                    { className: 'precio', key: 'precio' },
+                    `Precio: $${parseFloat(vehiculo.precio).toLocaleString()}`
+                  ),
+                  React.createElement(
+                    'button',
+                    {
+                      className: 'cotiza-btn',
+                      onClick: handleCotizarClick,
+                      key: 'cotiza-btn'
+                    },
+                    '¡COTIZA AHORA!'
+                  )
+                ]
+              )
+            ]
+          ),
+          React.createElement(
+            'section',
+            { className: 'otros-vehiculos', key: 'otros' },
+            [
+              React.createElement('h2', { key: 'titulo-otros' }, 'OTROS VEHÍCULOS'),
+              React.createElement(
+                'div',
+                { className: 'galeria-otros', key: 'galeria-otros' },
+                otrosVehiculos.map(auto =>
+                  React.createElement(
+                    'div',
+                    { className: 'producto', key: auto.idVehiculo },
+                    [
+                      React.createElement('img', {
+                        src: auto.imagenes[0] || '',
+                        alt: auto.modelo,
+                        key: 'img'
+                      }),
+                      React.createElement(
+                        'span',
+                        { className: 'marca', key: 'marca' },
+                        auto.modelo
+                      ),
+                      React.createElement(
+                        'span',
+                        { className: 'año', key: 'año' },
+                        auto.ano
+                      ),
+                      React.createElement(
+                        'span',
+                        { className: 'precio', key: 'precio' },
+                        `$${Number(auto.precio).toLocaleString()}`
+                      ),
+                      React.createElement(
+                        'button',
+                        {
+                          className: 'mas-info',
+                          onClick: () => handleVehicleClick(auto.idVehiculo),
+                          key: 'btn-mas-info'
+                        },
+                        'Más información'
+                      )
+                    ]
+                  )
+                )
+              )
+            ]
+          )
+        ]
+      ),
+      React.createElement(Footer, { key: 'footer' }),
+      React.createElement(
+        Modal,
+        {
+          isOpen: showLoginModal,
+          onRequestClose: () => setShowLoginModal(false),
+          className: 'login-modal',
+          overlayClassName: 'login-modal-overlay',
+          key: 'modal'
+        },
+        React.createElement(
+          'div',
+          { className: 'modal-content', key: 'modal-content' },
+          [
+            React.createElement('h2', { key: 'modal-title' }, 'Inicia sesión para continuar'),
+            React.createElement(
+              'p',
+              { key: 'modal-text' },
+              'Para poder cotizar este vehículo, necesitas iniciar sesión primero.'
+            ),
+            React.createElement(
+              'div',
+              { className: 'modal-buttons', key: 'modal-buttons' },
+              [
+                React.createElement(
+                  'button',
+                  {
+                    className: 'modal-btn cancel',
+                    onClick: () => setShowLoginModal(false),
+                    key: 'cancel'
+                  },
+                  'Cancelar'
+                ),
+                React.createElement(
+                  'button',
+                  {
+                    className: 'modal-btn confirm',
+                    onClick: handleLoginRedirect,
+                    key: 'confirm'
+                  },
+                  'Iniciar sesión'
+                )
+              ]
+            )
+          ]
+        )
+      )
+    ]
   );
 };
 

@@ -37,7 +37,7 @@ const ImagenesView = ({ showNotification }) => {
     const headers = getAuthHeaders();
     if (!headers) return;
     try {
-      const res = await axios.get('https://financiera-backend.vercel.app/api/marcas', { headers });
+      const res = await axios.get('http://localhost:3000/ https://financiera-backend.vercel.app/api/marcas', { headers });
       if (res.data.success) setMarcas(res.data.data);
     } catch {
       showNotification?.('Error al cargar marcas', 'error');
@@ -48,7 +48,7 @@ const ImagenesView = ({ showNotification }) => {
     const headers = getAuthHeaders();
     if (!headers) return;
     try {
-      const res = await axios.get('https://financiera-backend.vercel.app/api/catalogo', { headers });
+      const res = await axios.get('http://localhost:3000/ https://financiera-backend.vercel.app/api/catalogo', { headers });
       if (res.data.success) {
         setVehiculos(res.data.data);
         const imgs = [];
@@ -113,7 +113,7 @@ const ImagenesView = ({ showNotification }) => {
     formData.imagenes.forEach(file => fd.append('imagenes', file));
     try {
       await axios.post(
-        `https://financiera-backend.vercel.app/api/catalogo/${formData.idVehiculo}/imagenes`,
+        `http://localhost:3000/ https://financiera-backend.vercel.app/api/catalogo/${formData.idVehiculo}/imagenes`,
         fd,
         { headers }
       );

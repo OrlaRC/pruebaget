@@ -52,7 +52,7 @@ const Home = () => {
     window.addEventListener('storage', checkAuth);
 
     // Fetch vehicles
-    fetch("https://financiera-backend.vercel.app/api/catalogo")
+    fetch("http://localhost:3000/ https://financiera-backend.vercel.app/api/catalogo")
       .then((res) => res.json())
       .then((json) => {
         if (json.success) setVehicles(json.data);
@@ -62,7 +62,7 @@ const Home = () => {
       .finally(() => setLoadingVehicles(false));
 
     // Fetch brands
-    fetch("https://financiera-backend.vercel.app/api/marcas")
+    fetch("http://localhost:3000/ https://financiera-backend.vercel.app/api/marcas")
       .then((res) => res.json())
       .then((json) => {
         if (json.success) setBrands(json.data);

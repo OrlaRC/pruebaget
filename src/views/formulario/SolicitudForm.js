@@ -6,6 +6,14 @@ import './SolicitudForm.css';
 
 const SolicitudForm = ({ history, location }) => {
   const cotizacionData = location.state?.cotizacionData || {};
+  const accessToken = localStorage.getItem('accessToken');
+  const idCliente = parseInt(localStorage.getItem('idUsuario'), 10);
+
+  const [loading, setLoading] = useState(true);
+  const [cotizacionInfo, setCotizacionInfo] = useState(null);
+  const [vehiculoInfo, setVehiculoInfo] = useState(null);
+  const [clienteInfo, setClienteInfo] = useState(null);
+  const [error, setError] = useState(null);
 
   const [dataModified, setDataModified] = useState({
     enganche: false,
@@ -16,11 +24,11 @@ const SolicitudForm = ({ history, location }) => {
   const [formData, setFormData] = useState({
     idVehiculo: cotizacionData.idVehiculo || null,
     idCotizacion: cotizacionData.idCotizacion || null,
+    idVendedor: cotizacionData.idVendedor || null,
     enganche_propuesto: cotizacionData.enganche || 0,
     plazos_propuestos: Math.min(cotizacionData.plazo || 0, 60),
     descripcion_vehiculo_adicional: cotizacionData.descripcion || '',
-    idCliente: '',
-    idVendedor: '',
+    idCliente: idCliente || '',
     nombre_completo: '',
     telefono: '',
     direccion: '',
@@ -41,6 +49,77 @@ const SolicitudForm = ({ history, location }) => {
   });
 
   const [currentSection, setCurrentSection] = useState('vehiculo');
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        if (!cotizacionData.idVehiculo) return;
+        
+        const clienteRes = await fetch(`http://localhost:3000/ https://financiera-backend.vercel.app/api/usuarios/${idCliente}`, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          }
+        });
+        
+        if (!clienteRes.ok) {
+          throw new Error('Error al obtener datos del cliente');
+        }
+        
+        const clienteJson = await clienteRes.json();
+        setClienteInfo(clienteJson);
+        
+        setFormData(prev => ({
+          ...prev,
+          nombre_completo: clienteJson.nombre || '',
+          telefono: clienteJson.telefono ? clienteJson.telefono.toString() : '',
+          direccion: clienteJson.direccion || ''
+        }));
+
+        const cotizacionRes = await fetch(`http://localhost:3000/ https://financiera-backend.vercel.app/api/cotizaciones`, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          }
+        });
+        const cotizacionJson = await cotizacionRes.json();
+        
+        if (cotizacionJson.success) {
+          const cotizacion = cotizacionJson.cotizaciones.find(
+            c => c.idVehiculo === cotizacionData.idVehiculo && c.idCliente === idCliente
+          );
+          
+          if (cotizacion) {
+            setCotizacionInfo(cotizacion);
+            setFormData(prev => ({
+              ...prev,
+              idCotizacion: cotizacion.idCotizacion,
+              idVendedor: cotizacion.idVendedor,
+              enganche_propuesto: parseFloat(cotizacion.enganche),
+              plazos_propuestos: Math.min(cotizacion.plazos, 60)
+            }));
+          }
+        }
+
+        const vehiculoRes = await fetch(`http://localhost:3000/ https://financiera-backend.vercel.app/api/catalogo/${cotizacionData.idVehiculo}`);
+        const vehiculoJson = await vehiculoRes.json();
+        
+        if (vehiculoJson.success) {
+          setVehiculoInfo(vehiculoJson.data);
+          setFormData(prev => ({
+            ...prev,
+            descripcion_vehiculo_adicional: vehiculoJson.data.descripcion || ''
+          }));
+        }
+
+        setLoading(false);
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        setError('Error al cargar los datos. Por favor recarga la página.');
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [cotizacionData.idVehiculo, idCliente, accessToken]);
 
   useEffect(() => {
     setDataModified({
@@ -69,7 +148,7 @@ const SolicitudForm = ({ history, location }) => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!validateCurp(formData.curp)) {
@@ -82,19 +161,56 @@ const SolicitudForm = ({ history, location }) => {
       return;
     }
     
-    console.log('Datos enviados:', {
-      ...formData,
-      fecha_solicitud: new Date().toISOString()
-    });
-    
-    history.push('/confirmacion', { 
-      solicitudId: `SOL-${Date.now()}`,
-      datosVehiculo: {
-        idVehiculo: formData.idVehiculo,
-        idCotizacion: formData.idCotizacion,
-        descripcion: formData.descripcion_vehiculo_adicional
+    try {
+      const response = await fetch('http://localhost:3000/ https://financiera-backend.vercel.app/api/solicitudes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          idVendedor: formData.idVendedor,
+          idVehiculo: formData.idVehiculo,
+          idCotizacion: formData.idCotizacion,
+          nombre_completo: formData.nombre_completo,
+          telefono: formData.telefono,
+          direccion: formData.direccion,
+          curp: formData.curp,
+          fecha_nacimiento: formData.fecha_nacimiento,
+          estado_civil: formData.estado_civil,
+          cantidad_dependientes: formData.cantidad_dependientes,
+          tipo_vivienda: formData.tipo_vivienda,
+          ingreso_familiar: formData.ingreso_familiar,
+          direccion_trabajo: formData.direccion_trabajo,
+          empresa: formData.empresa,
+          puesto: formData.puesto,
+          ingreso_mensual: formData.ingreso_mensual,
+          tiempo_laborando: formData.tiempo_laborando,
+          tipo_credito: formData.tipo_credito,
+          enganche_propuesto: formData.enganche_propuesto,
+          plazos_propuestos: formData.plazos_propuestos,
+          comprobante_ingresos: formData.comprobante_ingresos,
+          descripcion_vehiculo_adicional: formData.descripcion_vehiculo_adicional
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        history.push({
+          pathname: '/info-auto',
+          state: { 
+            idVehiculo: formData.idVehiculo,
+            mensaje: 'Solicitud de crédito enviada, espere respuesta.'
+          }
+        });
+      } else {
+        alert(result.message || 'Error al enviar la solicitud');
       }
-    });
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      alert('Error al enviar la solicitud. Por favor intenta nuevamente.');
+    }
   };
 
   const validateCurp = (curp) => {
@@ -118,367 +234,641 @@ const SolicitudForm = ({ history, location }) => {
     });
   };
 
-  return (
-    <div className="solicitud-page">
-      <HeaderPrivado />
+  if (loading) {
+    return React.createElement(
+      'div',
+      { className: 'solicitud-page' },
+      [
+        React.createElement(HeaderPrivado, { key: 'header' }),
+        React.createElement(
+          'div',
+          { className: 'solicitud-container', key: 'container' },
+          [
+            React.createElement('h2', { key: 'title' }, 'Solicitud de Financiamiento Automotriz'),
+            React.createElement('p', { key: 'loading' }, 'Cargando datos...')
+          ]
+        ),
+        React.createElement(Footer, { key: 'footer' })
+      ]
+    );
+  }
+
+  if (error) {
+    return React.createElement(
+      'div',
+      { className: 'solicitud-page' },
+      [
+        React.createElement(HeaderPrivado, { key: 'header' }),
+        React.createElement(
+          'div',
+          { className: 'solicitud-container', key: 'container' },
+          [
+            React.createElement('h2', { key: 'title' }, 'Solicitud de Financiamiento Automotriz'),
+            React.createElement('p', { className: 'error-message', key: 'error' }, error)
+          ]
+        ),
+        React.createElement(Footer, { key: 'footer' })
+      ]
+    );
+  }
+
+  return React.createElement(
+    'div',
+    { className: 'solicitud-page' },
+    [
+      React.createElement(HeaderPrivado, { key: 'header' }),
       
-      <div className="solicitud-container">
-        <h2>Solicitud de Financiamiento Automotriz</h2>
-        
-        <input type="hidden" name="idVehiculo" value={formData.idVehiculo || ''} />
-        <input type="hidden" name="idCotizacion" value={formData.idCotizacion || ''} />
+      React.createElement(
+        'div',
+        { className: 'solicitud-container', key: 'container' },
+        [
+          React.createElement('h2', { key: 'title' }, 'Solicitud de Financiamiento Automotriz'),
+          
+          React.createElement('input', { 
+            type: 'hidden', 
+            name: 'idVehiculo', 
+            value: formData.idVehiculo || '', 
+            key: 'idVehiculo' 
+          }),
+          React.createElement('input', { 
+            type: 'hidden', 
+            name: 'idCotizacion', 
+            value: formData.idCotizacion || '', 
+            key: 'idCotizacion' 
+          }),
+          React.createElement('input', { 
+            type: 'hidden', 
+            name: 'idVendedor', 
+            value: formData.idVendedor || '', 
+            key: 'idVendedor' 
+          }),
 
-        <form onSubmit={handleSubmit}>
-          {/* Sección de IDs vinculados */}
-          <div className="vinculacion-section">
-            <h3>Información de Vinculación</h3>
-            <div className="id-display-container">
-              <div className="id-display">
-                <span className="id-label">ID Vehículo:</span>
-                <span className="id-value">{formData.idVehiculo || 'No especificado'}</span>
-              </div>
-              <div className="id-display">
-                <span className="id-label">ID Cotización:</span>
-                <span className="id-value">{formData.idCotizacion || 'No especificado'}</span>
-              </div>
-            </div>
-          </div>
+          React.createElement(
+            'form',
+            { onSubmit: handleSubmit, key: 'form' },
+            [
+              React.createElement(
+                'div',
+                { className: 'vinculacion-section', key: 'vinculacion' },
+                [
+                  React.createElement('h3', { key: 'title' }, 'Información de Vinculación'),
+                  React.createElement(
+                    'div',
+                    { className: 'id-display-container', key: 'ids' },
+                    [
+                      React.createElement(
+                        'div',
+                        { className: 'id-display', key: 'vehiculo' },
+                        [
+                          React.createElement('span', { className: 'id-label', key: 'label1' }, 'ID Vehículo:'),
+                          React.createElement('span', { className: 'id-value', key: 'value1' }, formData.idVehiculo || 'No especificado')
+                        ]
+                      ),
+                      React.createElement(
+                        'div',
+                        { className: 'id-display', key: 'cotizacion' },
+                        [
+                          React.createElement('span', { className: 'id-label', key: 'label2' }, 'ID Cotización:'),
+                          React.createElement('span', { className: 'id-value', key: 'value2' }, formData.idCotizacion || 'No especificado')
+                        ]
+                      )
+                    ]
+                  )
+                ]
+              ),
 
-          {/* Navegación entre secciones */}
-          <div className="section-navigation">
-            <button
-              type="button"
-              onClick={prevSection}
-              disabled={currentSection === 'vehiculo'}
-              className="nav-button"
-            >
-              Anterior
-            </button>
-            <button
-              type="button"
-              onClick={nextSection}
-              disabled={currentSection === 'documentos'}
-              className="nav-button"
-            >
-              Siguiente
-            </button>
-          </div>
+              React.createElement(
+                'div',
+                { className: 'section-navigation', key: 'navigation' },
+                [
+                  React.createElement(
+                    'button',
+                    {
+                      type: 'button',
+                      onClick: prevSection,
+                      disabled: currentSection === 'vehiculo',
+                      className: 'nav-button',
+                      key: 'prev'
+                    },
+                    'Anterior'
+                  ),
+                  React.createElement(
+                    'button',
+                    {
+                      type: 'button',
+                      onClick: nextSection,
+                      disabled: currentSection === 'documentos',
+                      className: 'nav-button',
+                      key: 'next'
+                    },
+                    'Siguiente'
+                  )
+                ]
+              ),
 
-          {/* Sección Vehículo */}
-          {currentSection === 'vehiculo' && (
-            <div className="seccion-vehiculo" key="vehiculo">
-              <h3>Información del Vehículo</h3>
-              
-              {Object.values(dataModified).some(v => v) && (
-                <div className="modification-alert">
-                  <i className="warning-icon">⚠️</i>
-                  <div>
-                    <strong>Atención:</strong> Has modificado datos de la cotización original.
-                    {formData.idCotizacion && (
-                      <p>La cotización original (ID: {formData.idCotizacion}) permanece vinculada.</p>
-                    )}
-                  </div>
-                </div>
-              )}
+              currentSection === 'vehiculo' && React.createElement(
+                'div',
+                { className: 'seccion-vehiculo', key: 'vehiculo-section' },
+                [
+                  React.createElement('h3', { key: 'title' }, 'Información del Vehículo'),
+                  
+                  Object.values(dataModified).some(v => v) && React.createElement(
+                    'div',
+                    { className: 'modification-alert', key: 'alert' },
+                    [
+                      React.createElement('i', { className: 'warning-icon', key: 'icon' }, '⚠️'),
+                      React.createElement(
+                        'div',
+                        { key: 'text' },
+                        [
+                          React.createElement('strong', { key: 'strong' }, 'Atención:'),
+                          ' Has modificado datos de la cotización original.',
+                          formData.idCotizacion && React.createElement(
+                            'p',
+                            { key: 'p' },
+                            `La cotización original (ID: ${formData.idCotizacion}) permanece vinculada.`
+                          )
+                        ]
+                      )
+                    ]
+                  ),
 
-              <div className="campo">
-                <label>Descripción del vehículo:</label>
-                <textarea
-                  name="descripcion_vehiculo_adicional"
-                  value={formData.descripcion_vehiculo_adicional}
-                  onChange={handleChange}
-                  required
-                />
-                {dataModified.descripcion && cotizacionData.descripcion && (
-                  <div className="original-value">
-                    <span>Valor original:</span> {cotizacionData.descripcion}
-                  </div>
-                )}
-              </div>
+                  React.createElement(
+                    'div',
+                    { className: 'campo', key: 'descripcion' },
+                    [
+                      React.createElement('label', { key: 'label' }, 'Descripción del vehículo:'),
+                      React.createElement('textarea', {
+                        name: 'descripcion_vehiculo_adicional',
+                        value: formData.descripcion_vehiculo_adicional,
+                        onChange: handleChange,
+                        required: true,
+                        key: 'textarea'
+                      }),
+                      dataModified.descripcion && vehiculoInfo?.descripcion && React.createElement(
+                        'div',
+                        { className: 'original-value', key: 'original' },
+                        [
+                          React.createElement('span', { key: 'span' }, 'Valor original:'),
+                          ' ',
+                          vehiculoInfo.descripcion
+                        ]
+                      )
+                    ]
+                  ),
 
-              <div className="dos-columnas">
-                <div className="campo">
-                  <label>Enganche propuesto ($):</label>
-                  <input
-                    type="number"
-                    name="enganche_propuesto"
-                    value={formData.enganche_propuesto}
-                    onChange={handleChange}
-                    min="0"
-                    required
-                  />
-                  {dataModified.enganche && cotizacionData.enganche && (
-                    <div className="original-value">
-                      <span>Valor original:</span> ${cotizacionData.enganche.toLocaleString()}
-                    </div>
-                  )}
-                </div>
+                  React.createElement(
+                    'div',
+                    { className: 'dos-columnas', key: 'dos-columnas' },
+                    [
+                      React.createElement(
+                        'div',
+                        { className: 'campo', key: 'enganche' },
+                        [
+                          React.createElement('label', { key: 'label' }, 'Enganche propuesto ($):'),
+                          React.createElement('input', {
+                            type: 'number',
+                            name: 'enganche_propuesto',
+                            value: formData.enganche_propuesto,
+                            onChange: handleChange,
+                            min: '0',
+                            required: true,
+                            key: 'input'
+                          }),
+                          dataModified.enganche && cotizacionInfo?.enganche && React.createElement(
+                            'div',
+                            { className: 'original-value', key: 'original' },
+                            [
+                              React.createElement('span', { key: 'span' }, 'Valor original:'),
+                              ' $',
+                              parseFloat(cotizacionInfo.enganche).toLocaleString()
+                            ]
+                          )
+                        ]
+                      ),
 
-                <div className="campo">
-                  <label>Plazo solicitado (meses):</label>
-                  <input
-                    type="number"
-                    name="plazos_propuestos"
-                    value={formData.plazos_propuestos}
-                    onChange={handleChange}
-                    min="1"
-                    max="60"
-                    required
-                  />
-                  <div className="plazo-info">
-                    Máximo 60 meses (5 años)
-                  </div>
-                  {dataModified.plazo && cotizacionData.plazo && (
-                    <div className="original-value">
-                      <span>Valor original:</span> {cotizacionData.plazo} meses
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
+                      React.createElement(
+                        'div',
+                        { className: 'campo', key: 'plazo' },
+                        [
+                          React.createElement('label', { key: 'label' }, 'Plazo solicitado (meses):'),
+                          React.createElement('input', {
+                            type: 'number',
+                            name: 'plazos_propuestos',
+                            value: formData.plazos_propuestos,
+                            onChange: handleChange,
+                            min: '1',
+                            max: '60',
+                            required: true,
+                            key: 'input'
+                          }),
+                          React.createElement(
+                            'div',
+                            { className: 'plazo-info', key: 'info' },
+                            'Máximo 60 meses (5 años)'
+                          ),
+                          dataModified.plazo && cotizacionInfo?.plazos && React.createElement(
+                            'div',
+                            { className: 'original-value', key: 'original' },
+                            [
+                              React.createElement('span', { key: 'span' }, 'Valor original:'),
+                              ' ',
+                              cotizacionInfo.plazos,
+                              ' meses'
+                            ]
+                          )
+                        ]
+                      )
+                    ]
+                  )
+                ]
+              ),
 
-          {/* Sección Información Personal */}
-          {currentSection === 'personal' && (
-            <div className="seccion-personal" key="personal">
-              <h3>Información Personal</h3>
-              
-              <div className="campo">
-                <label>Nombre completo:</label>
-                <input
-                  type="text"
-                  name="nombre_completo"
-                  value={formData.nombre_completo}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              
-              <div className="dos-columnas">
-                <div className="campo">
-                  <label>Teléfono:</label>
-                  <input
-                    type="tel"
-                    name="telefono"
-                    value={formData.telefono}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                
-                <div className="campo">
-                  <label>CURP:</label>
-                  <input
-                    type="text"
-                    name="curp"
-                    value={formData.curp}
-                    onChange={handleChange}
-                    pattern="[A-Z]{4}[0-9]{6}[A-Z]{6}[0-9]{2}"
-                    required
-                  />
-                  {!validateCurp(formData.curp) && formData.curp && (
-                    <span className="error">
-                      Formato de CURP inválido
-                    </span>
-                  )}
-                </div>
-              </div>
-              
-              <div className="campo">
-                <label>Dirección completa:</label>
-                <input
-                  type="text"
-                  name="direccion"
-                  value={formData.direccion}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              
-              <div className="dos-columnas">
-                <div className="campo">
-                  <label>Fecha de nacimiento:</label>
-                  <input
-                    type="date"
-                    name="fecha_nacimiento"
-                    value={formData.fecha_nacimiento}
-                    onChange={handleChange}
-                    required
-                    max={new Date().toISOString().split('T')[0]}
-                  />
-                </div>
-                
-                <div className="campo">
-                  <label>Estado civil:</label>
-                  <select
-                    name="estado_civil"
-                    value={formData.estado_civil}
-                    onChange={handleChange}
-                    required
-                  >
-                    <option value="soltero">Soltero(a)</option>
-                    <option value="casado">Casado(a)</option>
-                    <option value="divorciado">Divorciado(a)</option>
-                    <option value="viudo">Viudo(a)</option>
-                    <option value="concubinato">Concubinato</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div className="dos-columnas">
-                <div className="campo">
-                  <label>Dependientes económicos:</label>
-                  <input
-                    type="number"
-                    name="cantidad_dependientes"
-                    value={formData.cantidad_dependientes}
-                    onChange={handleChange}
-                    min="0"
-                    required
-                  />
-                </div>
-                
-                <div className="campo">
-                  <label>Tipo de vivienda:</label>
-                  <select
-                    name="tipo_vivienda"
-                    value={formData.tipo_vivienda}
-                    onChange={handleChange}
-                    required
-                  >
-                    <option value="propia">Propia</option>
-                    <option value="rentada">Rentada</option>
-                    <option value="familiar">Familiar</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div className="campo">
-                <label>Ingreso familiar total ($):</label>
-                <input
-                  type="number"
-                  name="ingreso_familiar"
-                  value={formData.ingreso_familiar}
-                  onChange={handleChange}
-                  min="0"
-                  step="0.01"
-                  required
-                />
-              </div>
-            </div>
-          )}
+              currentSection === 'personal' && React.createElement(
+                'div',
+                { className: 'seccion-personal', key: 'personal-section' },
+                [
+                  React.createElement('h3', { key: 'title' }, 'Información Personal'),
+                  
+                  React.createElement(
+                    'div',
+                    { className: 'campo', key: 'nombre' },
+                    [
+                      React.createElement('label', { key: 'label' }, 'Nombre completo:'),
+                      React.createElement('input', {
+                        type: 'text',
+                        name: 'nombre_completo',
+                        value: formData.nombre_completo,
+                        onChange: handleChange,
+                        required: true,
+                        key: 'input'
+                      }),
+                      clienteInfo?.nombre && React.createElement(
+                        'div',
+                        { className: 'original-value', key: 'original' },
+                        [
+                          React.createElement('span', { key: 'span' }, 'Valor original:'),
+                          ' ',
+                          clienteInfo.nombre
+                        ]
+                      )
+                    ]
+                  ),
+                  
+                  React.createElement(
+                    'div',
+                    { className: 'dos-columnas', key: 'dos-columnas' },
+                    [
+                      React.createElement(
+                        'div',
+                        { className: 'campo', key: 'telefono' },
+                        [
+                          React.createElement('label', { key: 'label' }, 'Teléfono:'),
+                          React.createElement('input', {
+                            type: 'tel',
+                            name: 'telefono',
+                            value: formData.telefono,
+                            onChange: handleChange,
+                            required: true,
+                            key: 'input'
+                          }),
+                          clienteInfo?.telefono && React.createElement(
+                            'div',
+                            { className: 'original-value', key: 'original' },
+                            [
+                              React.createElement('span', { key: 'span' }, 'Valor original:'),
+                              ' ',
+                              clienteInfo.telefono
+                            ]
+                          )
+                        ]
+                      ),
+                      
+                      React.createElement(
+                        'div',
+                        { className: 'campo', key: 'curp' },
+                        [
+                          React.createElement('label', { key: 'label' }, 'CURP:'),
+                          React.createElement('input', {
+                            type: 'text',
+                            name: 'curp',
+                            value: formData.curp,
+                            onChange: handleChange,
+                            pattern: '[A-Z]{4}[0-9]{6}[A-Z]{6}[0-9]{2}',
+                            required: true,
+                            key: 'input'
+                          }),
+                          !validateCurp(formData.curp) && formData.curp && React.createElement(
+                            'span',
+                            { className: 'error', key: 'error' },
+                            'Formato de CURP inválido'
+                          )
+                        ]
+                      )
+                    ]
+                  ),
+                  
+                  React.createElement(
+                    'div',
+                    { className: 'campo', key: 'direccion' },
+                    [
+                      React.createElement('label', { key: 'label' }, 'Dirección completa:'),
+                      React.createElement('input', {
+                        type: 'text',
+                        name: 'direccion',
+                        value: formData.direccion,
+                        onChange: handleChange,
+                        required: true,
+                        key: 'input'
+                      }),
+                      clienteInfo?.direccion && React.createElement(
+                        'div',
+                        { className: 'original-value', key: 'original' },
+                        [
+                          React.createElement('span', { key: 'span' }, 'Valor original:'),
+                          ' ',
+                          clienteInfo.direccion
+                        ]
+                      )
+                    ]
+                  ),
+                  
+                  React.createElement(
+                    'div',
+                    { className: 'dos-columnas', key: 'dos-columnas2' },
+                    [
+                      React.createElement(
+                        'div',
+                        { className: 'campo', key: 'fecha-nacimiento' },
+                        [
+                          React.createElement('label', { key: 'label' }, 'Fecha de nacimiento:'),
+                          React.createElement('input', {
+                            type: 'date',
+                            name: 'fecha_nacimiento',
+                            value: formData.fecha_nacimiento,
+                            onChange: handleChange,
+                            required: true,
+                            max: new Date().toISOString().split('T')[0],
+                            key: 'input'
+                          })
+                        ]
+                      ),
+                      
+                      React.createElement(
+                        'div',
+                        { className: 'campo', key: 'estado-civil' },
+                        [
+                          React.createElement('label', { key: 'label' }, 'Estado civil:'),
+                          React.createElement(
+                            'select',
+                            {
+                              name: 'estado_civil',
+                              value: formData.estado_civil,
+                              onChange: handleChange,
+                              required: true,
+                              key: 'select'
+                            },
+                            [
+                              React.createElement('option', { value: 'soltero', key: 'soltero' }, 'Soltero(a)'),
+                              React.createElement('option', { value: 'casado', key: 'casado' }, 'Casado(a)'),
+                              React.createElement('option', { value: 'divorciado', key: 'divorciado' }, 'Divorciado(a)'),
+                              React.createElement('option', { value: 'viudo', key: 'viudo' }, 'Viudo(a)'),
+                              React.createElement('option', { value: 'concubinato', key: 'concubinato' }, 'Concubinato')
+                            ]
+                          )
+                        ]
+                      )
+                    ]
+                  ),
+                  
+                  React.createElement(
+                    'div',
+                    { className: 'dos-columnas', key: 'dos-columnas3' },
+                    [
+                      React.createElement(
+                        'div',
+                        { className: 'campo', key: 'dependientes' },
+                        [
+                          React.createElement('label', { key: 'label' }, 'Dependientes económicos:'),
+                          React.createElement('input', {
+                            type: 'number',
+                            name: 'cantidad_dependientes',
+                            value: formData.cantidad_dependientes,
+                            onChange: handleChange,
+                            min: '0',
+                            required: true,
+                            key: 'input'
+                          })
+                        ]
+                      ),
+                      
+                      React.createElement(
+                        'div',
+                        { className: 'campo', key: 'vivienda' },
+                        [
+                          React.createElement('label', { key: 'label' }, 'Tipo de vivienda:'),
+                          React.createElement(
+                            'select',
+                            {
+                              name: 'tipo_vivienda',
+                              value: formData.tipo_vivienda,
+                              onChange: handleChange,
+                              required: true,
+                              key: 'select'
+                            },
+                            [
+                              React.createElement('option', { value: 'propia', key: 'propia' }, 'Propia'),
+                              React.createElement('option', { value: 'rentada', key: 'rentada' }, 'Rentada'),
+                              React.createElement('option', { value: 'familiar', key: 'familiar' }, 'Familiar')
+                            ]
+                          )
+                        ]
+                      )
+                    ]
+                  ),
+                  
+                  React.createElement(
+                    'div',
+                    { className: 'campo', key: 'ingreso-familiar' },
+                    [
+                      React.createElement('label', { key: 'label' }, 'Ingreso familiar total ($):'),
+                      React.createElement('input', {
+                        type: 'number',
+                        name: 'ingreso_familiar',
+                        value: formData.ingreso_familiar,
+                        onChange: handleChange,
+                        min: '0',
+                        step: '0.01',
+                        required: true,
+                        key: 'input'
+                      })
+                    ]
+                  )
+                ]
+              ),
 
-          {/* Sección Información Laboral */}
-          {currentSection === 'laboral' && (
-            <div className="seccion-laboral" key="laboral">
-              <h3>Información Laboral</h3>
-              
-              <div className="campo">
-                <label>Empresa donde trabaja:</label>
-                <input
-                  type="text"
-                  name="empresa"
-                  value={formData.empresa}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              
-              <div className="campo">
-                <label>Puesto:</label>
-                <input
-                  type="text"
-                  name="puesto"
-                  value={formData.puesto}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              
-              <div className="campo">
-                <label>Dirección de trabajo:</label>
-                <input
-                  type="text"
-                  name="direccion_trabajo"
-                  value={formData.direccion_trabajo}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              
-              <div className="dos-columnas">
-                <div className="campo">
-                  <label>Ingreso mensual ($):</label>
-                  <input
-                    type="number"
-                    name="ingreso_mensual"
-                    value={formData.ingreso_mensual}
-                    onChange={handleChange}
-                    min="0"
-                    step="0.01"
-                    required
-                  />
-                </div>
-                
-                <div className="campo">
-                  <label>Tiempo laborando (meses):</label>
-                  <input
-                    type="number"
-                    name="tiempo_laborando"
-                    value={formData.tiempo_laborando}
-                    onChange={handleChange}
-                    min="0"
-                    required
-                  />
-                </div>
-              </div>
-            </div>
-          )}
+              currentSection === 'laboral' && React.createElement(
+                'div',
+                { className: 'seccion-laboral', key: 'laboral-section' },
+                [
+                  React.createElement('h3', { key: 'title' }, 'Información Laboral'),
+                  
+                  React.createElement(
+                    'div',
+                    { className: 'campo', key: 'empresa' },
+                    [
+                      React.createElement('label', { key: 'label' }, 'Empresa donde trabaja:'),
+                      React.createElement('input', {
+                        type: 'text',
+                        name: 'empresa',
+                        value: formData.empresa,
+                        onChange: handleChange,
+                        required: true,
+                        key: 'input'
+                      })
+                    ]
+                  ),
+                  
+                  React.createElement(
+                    'div',
+                    { className: 'campo', key: 'puesto' },
+                    [
+                      React.createElement('label', { key: 'label' }, 'Puesto:'),
+                      React.createElement('input', {
+                        type: 'text',
+                        name: 'puesto',
+                        value: formData.puesto,
+                        onChange: handleChange,
+                        required: true,
+                        key: 'input'
+                      })
+                    ]
+                  ),
+                  
+                  React.createElement(
+                    'div',
+                    { className: 'campo', key: 'direccion-trabajo' },
+                    [
+                      React.createElement('label', { key: 'label' }, 'Dirección de trabajo:'),
+                      React.createElement('input', {
+                        type: 'text',
+                        name: 'direccion_trabajo',
+                        value: formData.direccion_trabajo,
+                        onChange: handleChange,
+                        required: true,
+                        key: 'input'
+                      })
+                    ]
+                  ),
+                  
+                  React.createElement(
+                    'div',
+                    { className: 'dos-columnas', key: 'dos-columnas' },
+                    [
+                      React.createElement(
+                        'div',
+                        { className: 'campo', key: 'ingreso-mensual' },
+                        [
+                          React.createElement('label', { key: 'label' }, 'Ingreso mensual ($):'),
+                          React.createElement('input', {
+                            type: 'number',
+                            name: 'ingreso_mensual',
+                            value: formData.ingreso_mensual,
+                            onChange: handleChange,
+                            min: '0',
+                            step: '0.01',
+                            required: true,
+                            key: 'input'
+                          })
+                        ]
+                      ),
+                      
+                      React.createElement(
+                        'div',
+                        { className: 'campo', key: 'tiempo-laborando' },
+                        [
+                          React.createElement('label', { key: 'label' }, 'Tiempo laborando (meses):'),
+                          React.createElement('input', {
+                            type: 'number',
+                            name: 'tiempo_laborando',
+                            value: formData.tiempo_laborando,
+                            onChange: handleChange,
+                            min: '0',
+                            required: true,
+                            key: 'input'
+                          })
+                        ]
+                      )
+                    ]
+                  )
+                ]
+              ),
 
-          {/* Sección Documentación */}
-          {currentSection === 'documentos' && (
-            <div className="seccion-documentos" key="documentos">
-              <h3>Documentación Requerida</h3>
-              
-              <div className="campo-checkbox">
-                <input
-                  type="checkbox"
-                  name="comprobante_ingresos"
-                  checked={formData.comprobante_ingresos}
-                  onChange={handleChange}
-                  id="comprobante_ingresos"
-                />
-                <label htmlFor="comprobante_ingresos">
-                  ¿Cuenta con comprobante de ingresos?
-                </label>
-              </div>
-              
-              <div className="campo-checkbox">
-                <input
-                  type="checkbox"
-                  name="acepta_terminos"
-                  checked={formData.acepta_terminos}
-                  onChange={handleChange}
-                  id="acepta_terminos"
-                  required
-                />
-                <label htmlFor="acepta_terminos">
-                  Acepto los términos y condiciones del financiamiento
-                </label>
-              </div>
-            </div>
-          )}
+              currentSection === 'documentos' && React.createElement(
+                'div',
+                { className: 'seccion-documentos', key: 'documentos-section' },
+                [
+                  React.createElement('h3', { key: 'title' }, 'Documentación Requerida'),
+                  
+                  React.createElement(
+                    'div',
+                    { className: 'campo-checkbox', key: 'comprobante' },
+                    [
+                      React.createElement('input', {
+                        type: 'checkbox',
+                        name: 'comprobante_ingresos',
+                        checked: formData.comprobante_ingresos,
+                        onChange: handleChange,
+                        id: 'comprobante_ingresos',
+                        key: 'input'
+                      }),
+                      React.createElement(
+                        'label',
+                        { htmlFor: 'comprobante_ingresos', key: 'label' },
+                        '¿Cuenta con comprobante de ingresos?'
+                      )
+                    ]
+                  ),
+                  
+                  React.createElement(
+                    'div',
+                    { className: 'campo-checkbox', key: 'terminos' },
+                    [
+                      React.createElement('input', {
+                        type: 'checkbox',
+                        name: 'acepta_terminos',
+                        checked: formData.acepta_terminos,
+                        onChange: handleChange,
+                        id: 'acepta_terminos',
+                        required: true,
+                        key: 'input'
+                      }),
+                      React.createElement(
+                        'label',
+                        { htmlFor: 'acepta_terminos', key: 'label' },
+                        'Acepto los términos y condiciones del financiamiento'
+                      )
+                    ]
+                  )
+                ]
+              ),
 
-          <div className="form-actions">
-            <button type="submit" className="btn-enviar">
-              Enviar Solicitud
-            </button>
-          </div>
-        </form>
-      </div>
+              React.createElement(
+                'div',
+                { className: 'form-actions', key: 'actions' },
+                React.createElement(
+                  'button',
+                  { type: 'submit', className: 'btn-enviar', key: 'submit' },
+                  'Enviar Solicitud'
+                )
+              )
+            ]
+          )
+        ]
+      ),
 
-      <Footer />
-    </div>
+      React.createElement(Footer, { key: 'footer' })
+    ]
   );
 };
 

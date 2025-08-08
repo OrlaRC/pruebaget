@@ -33,7 +33,7 @@ const Desktop4 = () => {
     if (!idVehiculo) return;
     const fetchVehiculo = async () => {
       try {
-        const res = await fetch(`https://financiera-backend.vercel.app/api/catalogo/${idVehiculo}`);
+        const res = await fetch(`http://localhost:3000/ https://financiera-backend.vercel.app/api/catalogo/${idVehiculo}`);
         const data = await res.json();
         if (data.success) {
           setVehiculo(data.data);
@@ -156,7 +156,7 @@ const Desktop4 = () => {
     };
 
     try {
-      const res = await fetch('https://financiera-backend.vercel.app/api/cotizaciones', {
+      const res = await fetch('http://localhost:3000/ https://financiera-backend.vercel.app/api/cotizaciones', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
