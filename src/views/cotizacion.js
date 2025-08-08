@@ -60,6 +60,38 @@ const Desktop4 = () => {
     setModalMessage('');
   };
 
+  const validarDatos = (engancheNum, plazoNum, precio) => {
+    if (isNaN(engancheNum) || engancheNum < 0) {
+      abrirModal('El monto de enganche debe ser un número válido y mayor o igual a 0.');
+      return false;
+    }
+    if (isNaN(plazoNum) || ![12, 24, 36, 48, 60].includes(plazoNum)) {
+      abrirModal('El plazo debe ser uno de los valores permitidos: 12, 24, 36, 48, 60 meses.');
+      return false;
+    }
+    if (engancheNum > precio) {
+      abrirModal('El monto de enganche no puede ser mayor al precio del vehículo.');
+      return false;
+    }
+
+    // Validaciones según reglas backend
+    if (precio >= 160000 && precio <= 200000 && engancheNum < 20000) {
+      abrirModal('El enganche debe ser al menos de 20,000 para precios netos entre 160,000 y 200,000.');
+      return false;
+    }
+    if (precio > 200000 && engancheNum < precio * 0.1) {
+      abrirModal(`El enganche debe ser al menos el 10% del precio neto cuando el precio es mayor a $${precio.toLocaleString()}.`);
+      return false;
+    }
+
+    if (engancheNum > precio * 0.5) {
+      abrirModal('El enganche no puede ser mayor al 50% del precio neto del vehículo.');
+      return false;
+    }
+
+    return true;
+  };
+
   const calcularMensualidad = () => {
     if (enganche === '') {
       abrirModal('Por favor, ingresa el monto de enganche.');
@@ -74,18 +106,7 @@ const Desktop4 = () => {
     const plazoNum = parseInt(plazo);
     const precio = parseFloat(vehiculo.precio);
 
-    if (isNaN(montoEngancheNum) || montoEngancheNum < 0) {
-      abrirModal('El monto de enganche debe ser un número válido y mayor o igual a 0.');
-      return;
-    }
-
-    if (isNaN(plazoNum) || ![12, 24, 36, 48, 60].includes(plazoNum)) {
-      abrirModal('El plazo debe ser uno de los valores permitidos: 12, 24, 36, 48, 60 meses.');
-      return;
-    }
-
-    if (montoEngancheNum > precio) {
-      abrirModal('El monto de enganche no puede ser mayor al precio del vehículo.');
+    if (!validarDatos(montoEngancheNum, plazoNum, precio)) {
       return;
     }
 
@@ -114,6 +135,10 @@ const Desktop4 = () => {
 
     if (!clienteId) {
       abrirModal('No se encontró el id de usuario. Por favor inicia sesión de nuevo.');
+      return;
+    }
+
+    if (!validarDatos(montoEngancheNum, plazoNum, precio)) {
       return;
     }
 
@@ -226,7 +251,6 @@ const Desktop4 = () => {
                 opacity: mensualidad === null ? 0.5 : 1,
                 cursor: mensualidad === null ? 'not-allowed' : 'pointer',
                 minWidth: '180px',
-
               }}
             >
               ENVIAR COTIZACIÓN
