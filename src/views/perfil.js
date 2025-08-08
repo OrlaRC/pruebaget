@@ -44,7 +44,7 @@ const Perfil = () => {
       return;
     }
 
-    fetch(`http://localhost:3000/ https://financiera-backend.vercel.app/api/usuarios/${idCliente}`, {
+    fetch(`https://financiera-backend.vercel.app/api/usuarios/${idCliente}`, {
       headers: {
         Authorization: `Bearer ${token}`
       }
@@ -123,7 +123,7 @@ const Perfil = () => {
         payload.password = userData.password;
       }
 
-      const response = await fetch(`http://localhost:3000/ https://financiera-backend.vercel.app/api/usuarios/${idCliente}`, {
+      const response = await fetch(`https://financiera-backend.vercel.app/api/usuarios/${idCliente}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

@@ -55,7 +55,7 @@ const SolicitudForm = ({ history, location }) => {
       try {
         if (!cotizacionData.idVehiculo) return;
         
-        const clienteRes = await fetch(`http://localhost:3000/ https://financiera-backend.vercel.app/api/usuarios/${idCliente}`, {
+        const clienteRes = await fetch(`https://financiera-backend.vercel.app/api/usuarios/${idCliente}`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`
           }
@@ -75,7 +75,7 @@ const SolicitudForm = ({ history, location }) => {
           direccion: clienteJson.direccion || ''
         }));
 
-        const cotizacionRes = await fetch(`http://localhost:3000/ https://financiera-backend.vercel.app/api/cotizaciones`, {
+        const cotizacionRes = await fetch(`https://financiera-backend.vercel.app/api/cotizaciones`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`
           }
@@ -99,7 +99,7 @@ const SolicitudForm = ({ history, location }) => {
           }
         }
 
-        const vehiculoRes = await fetch(`http://localhost:3000/ https://financiera-backend.vercel.app/api/catalogo/${cotizacionData.idVehiculo}`);
+        const vehiculoRes = await fetch(`https://financiera-backend.vercel.app/api/catalogo/${cotizacionData.idVehiculo}`);
         const vehiculoJson = await vehiculoRes.json();
         
         if (vehiculoJson.success) {
@@ -162,7 +162,7 @@ const SolicitudForm = ({ history, location }) => {
     }
     
     try {
-      const response = await fetch('http://localhost:3000/ https://financiera-backend.vercel.app/api/solicitudes', {
+      const response = await fetch('https://financiera-backend.vercel.app/api/solicitudes', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

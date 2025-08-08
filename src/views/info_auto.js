@@ -17,7 +17,10 @@ const InfoAuto = () => {
   const [thumbnails, setThumbnails] = useState([]);
   const [otrosVehiculos, setOthers] = useState([]);
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [mensaje, setMensaje] = useState('');
+  const [confirmationModal, setConfirmationModal] = useState({
+    isOpen: false,
+    message: ''
+  });
 
   const idFromState = state?.idVehiculo;
   const storedId = localStorage.getItem('idVehiculo');
@@ -45,9 +48,12 @@ const InfoAuto = () => {
 
   useEffect(() => {
     if (state?.mensaje) {
-      setMensaje(state.mensaje);
+      setConfirmationModal({
+        isOpen: true,
+        message: state.mensaje
+      });
       const timer = setTimeout(() => {
-        setMensaje('');
+        setConfirmationModal(prev => ({ ...prev, isOpen: false }));
       }, 5000);
       return () => clearTimeout(timer);
     }
@@ -61,7 +67,7 @@ const InfoAuto = () => {
     if (!idVehiculo) return;
     const fetchVehiculo = async () => {
       try {
-        const res = await fetch(`http://localhost:3000/ https://financiera-backend.vercel.app/api/catalogo/${idVehiculo}`);
+        const res = await fetch(`https://financiera-backend.vercel.app/api/catalogo/${idVehiculo}`);
         const { success, data: v } = await res.json();
         if (success) {
           setVehiculo(v);
@@ -71,7 +77,7 @@ const InfoAuto = () => {
             setThumbnails(imgs.slice(1));
           }
           if (v.idMarca) {
-            const r = await fetch(`http://localhost:3000/ https://financiera-backend.vercel.app/api/marcas/${v.idMarca}`);
+            const r = await fetch(`https://financiera-backend.vercel.app/api/marcas/${v.idMarca}`);
             const { data: bd } = await r.json();
             setBrandName(bd?.nombre_marca || '');
           }
@@ -88,7 +94,7 @@ const InfoAuto = () => {
   useEffect(() => {
     const fetchOthers = async () => {
       try {
-        const res = await fetch('http://localhost:3000/ https://financiera-backend.vercel.app/api/catalogo');
+        const res = await fetch('https://financiera-backend.vercel.app/api/catalogo');
         const { success, data } = await res.json();
         if (success) {
           setOthers(
@@ -99,6 +105,33 @@ const InfoAuto = () => {
     };
     fetchOthers();
   }, [idVehiculo]);
+
+  const handleThumbnailClick = (idx) => {
+    const clicked = thumbnails[idx];
+    const newThumbs = [...thumbnails];
+    newThumbs[idx] = mainImage;
+    setMainImage(clicked);
+    setThumbnails(newThumbs);
+  };
+
+  const handleVehicleClick = (id) => {
+    history.push('/info-auto', { idVehiculo: id });
+    setTimeout(() => {
+      if (titleRef.current) {
+        titleRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, 100);
+  };
+
+  const cerrarModal = () => {
+    setConfirmationModal(prev => ({ ...prev, isOpen: false }));
+  };
+
+  const caracteristicasList = vehiculo?.caracteristicas
+    ? vehiculo.caracteristicas.split(', ').map(item => item.trim())
+    : [];
 
   if (!idVehiculo) {
     return React.createElement('div', null, 'No se ha especificado el vehículo.');
@@ -123,29 +156,6 @@ const InfoAuto = () => {
     );
   }
 
-  const handleThumbnailClick = (idx) => {
-    const clicked = thumbnails[idx];
-    const newThumbs = [...thumbnails];
-    newThumbs[idx] = mainImage;
-    setMainImage(clicked);
-    setThumbnails(newThumbs);
-  };
-
-  const handleVehicleClick = (id) => {
-    history.push('/info-auto', { idVehiculo: id });
-    setTimeout(() => {
-      if (titleRef.current) {
-        titleRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } else {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-    }, 100);
-  };
-
-  const caracteristicasList = vehiculo.caracteristicas
-    ? vehiculo.caracteristicas.split(', ').map(item => item.trim())
-    : [];
-
   return React.createElement(
     'div',
     { className: 'desktop2-container' },
@@ -156,11 +166,6 @@ const InfoAuto = () => {
         React.createElement('title', null, `${vehiculo.modelo} | CARS GET`)
       ),
       React.createElement(HeaderPrivado, { key: 'header' }),
-      mensaje && React.createElement(
-        'div',
-        { className: 'mensaje-confirmacion', key: 'mensaje' },
-        mensaje
-      ),
       React.createElement(
         'main',
         { className: 'desktop2-main', key: 'main' },
@@ -350,28 +355,28 @@ const InfoAuto = () => {
           onRequestClose: () => setShowLoginModal(false),
           className: 'login-modal',
           overlayClassName: 'login-modal-overlay',
-          key: 'modal'
+          key: 'login-modal'
         },
         React.createElement(
           'div',
-          { className: 'modal-content', key: 'modal-content' },
+          { className: 'modal-content', key: 'login-modal-content' },
           [
-            React.createElement('h2', { key: 'modal-title' }, 'Inicia sesión para continuar'),
+            React.createElement('h2', { key: 'login-modal-title' }, 'Inicia sesión para continuar'),
             React.createElement(
               'p',
-              { key: 'modal-text' },
+              { key: 'login-modal-text' },
               'Para poder cotizar este vehículo, necesitas iniciar sesión primero.'
             ),
             React.createElement(
               'div',
-              { className: 'modal-buttons', key: 'modal-buttons' },
+              { className: 'modal-buttons', key: 'login-modal-buttons' },
               [
                 React.createElement(
                   'button',
                   {
                     className: 'modal-btn cancel',
                     onClick: () => setShowLoginModal(false),
-                    key: 'cancel'
+                    key: 'login-cancel'
                   },
                   'Cancelar'
                 ),
@@ -380,11 +385,49 @@ const InfoAuto = () => {
                   {
                     className: 'modal-btn confirm',
                     onClick: handleLoginRedirect,
-                    key: 'confirm'
+                    key: 'login-confirm'
                   },
                   'Iniciar sesión'
                 )
               ]
+            )
+          ]
+        )
+      ),
+      React.createElement(
+        Modal,
+        {
+          isOpen: confirmationModal.isOpen,
+          onRequestClose: cerrarModal,
+          className: 'custom-modal',
+          overlayClassName: 'custom-modal-overlay',
+          key: 'confirmation-modal'
+        },
+        React.createElement(
+          'div',
+          { style: { padding: '1rem', textAlign: 'center' }, key: 'confirmation-content' },
+          [
+            React.createElement(
+              'p',
+              { style: { fontSize: '1.1rem', marginBottom: '1rem' }, key: 'confirmation-message' },
+              confirmationModal.message
+            ),
+            React.createElement(
+              'button',
+              {
+                onClick: cerrarModal,
+                style: {
+                  backgroundColor: '#f8791d',
+                  color: 'white',
+                  border: 'none',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                },
+                key: 'confirmation-button'
+              },
+              'Aceptar'
             )
           ]
         )
