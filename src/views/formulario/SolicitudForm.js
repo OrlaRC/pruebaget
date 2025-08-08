@@ -25,8 +25,8 @@ const SolicitudForm = ({ history, location }) => {
     idVehiculo: cotizacionData.idVehiculo || null,
     idCotizacion: cotizacionData.idCotizacion || null,
     idVendedor: cotizacionData.idVendedor || null,
-    enganche_propuesto: cotizacionData.enganche || 0,
-    plazos_propuestos: Math.min(cotizacionData.plazo || 0, 60),
+    enganche_propuesto: cotizacionData.enganche ? cotizacionData.enganche.toString() : '',
+    plazos_propuestos: cotizacionData.plazo ? Math.min(cotizacionData.plazo, 60).toString() : '',
     descripcion_vehiculo_adicional: cotizacionData.descripcion || '',
     idCliente: idCliente || '',
     nombre_completo: '',
@@ -35,14 +35,14 @@ const SolicitudForm = ({ history, location }) => {
     curp: '',
     fecha_nacimiento: '',
     estado_civil: 'soltero',
-    cantidad_dependientes: 0,
+    cantidad_dependientes: '',
     tipo_vivienda: 'propia',
-    ingreso_familiar: 0,
+    ingreso_familiar: '',
     direccion_trabajo: '',
     empresa: '',
     puesto: '',
-    ingreso_mensual: 0,
-    tiempo_laborando: 0,
+    ingreso_mensual: '',
+    tiempo_laborando: '',
     tipo_credito: 'automotriz',
     comprobante_ingresos: false,
     acepta_terminos: false
@@ -93,8 +93,8 @@ const SolicitudForm = ({ history, location }) => {
               ...prev,
               idCotizacion: cotizacion.idCotizacion,
               idVendedor: cotizacion.idVendedor,
-              enganche_propuesto: parseFloat(cotizacion.enganche),
-              plazos_propuestos: Math.min(cotizacion.plazos, 60)
+              enganche_propuesto: cotizacion.enganche ? cotizacion.enganche.toString() : '',
+              plazos_propuestos: cotizacion.plazos ? Math.min(cotizacion.plazos, 60).toString() : ''
             }));
           }
         }
@@ -122,11 +122,16 @@ const SolicitudForm = ({ history, location }) => {
   }, [cotizacionData.idVehiculo, idCliente, accessToken]);
 
   useEffect(() => {
+    const compareValues = (a, b) => {
+      if (a === '' || b === '') return false;
+      return parseFloat(a) !== parseFloat(b);
+    };
+    
     setDataModified({
       enganche: cotizacionData.enganche !== undefined && 
-               cotizacionData.enganche !== formData.enganche_propuesto,
+               compareValues(cotizacionData.enganche.toString(), formData.enganche_propuesto),
       plazo: cotizacionData.plazo !== undefined && 
-             cotizacionData.plazo !== formData.plazos_propuestos,
+             compareValues(cotizacionData.plazo.toString(), formData.plazos_propuestos),
       descripcion: cotizacionData.descripcion !== undefined && 
                   cotizacionData.descripcion !== formData.descripcion_vehiculo_adicional
     });
@@ -135,16 +140,9 @@ const SolicitudForm = ({ history, location }) => {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     
-    let processedValue = value;
-    if (name === 'plazos_propuestos') {
-      const numericValue = parseInt(value) || 0;
-      processedValue = Math.min(numericValue, 60);
-    }
-    
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : 
-             (type === 'number' ? parseFloat(processedValue) || 0 : processedValue)
+      [name]: type === 'checkbox' ? checked : value
     }));
   };
 
@@ -160,6 +158,51 @@ const SolicitudForm = ({ history, location }) => {
       alert('Debe aceptar los términos y condiciones');
       return;
     }
+
+    // Validar campos numéricos
+    const numericFields = [
+      'enganche_propuesto', 'plazos_propuestos', 'cantidad_dependientes',
+      'ingreso_familiar', 'ingreso_mensual', 'tiempo_laborando'
+    ];
+    
+    for (const field of numericFields) {
+      if (formData[field] && isNaN(formData[field])) {
+        alert(`Por favor ingrese un valor numérico válido en ${field}`);
+        return;
+      }
+    }
+
+    // Preparar datos para enviar
+    const payload = {
+      idVendedor: formData.idVendedor,
+      idVehiculo: formData.idVehiculo,
+      idCotizacion: formData.idCotizacion,
+      nombre_completo: formData.nombre_completo,
+      telefono: formData.telefono,
+      direccion: formData.direccion,
+      curp: formData.curp,
+      fecha_nacimiento: formData.fecha_nacimiento,
+      estado_civil: formData.estado_civil,
+      cantidad_dependientes: formData.cantidad_dependientes ? parseInt(formData.cantidad_dependientes) : 0,
+      tipo_vivienda: formData.tipo_vivienda,
+      ingreso_familiar: formData.ingreso_familiar ? parseFloat(formData.ingreso_familiar) : 0,
+      direccion_trabajo: formData.direccion_trabajo,
+      empresa: formData.empresa,
+      puesto: formData.puesto,
+      ingreso_mensual: formData.ingreso_mensual ? parseFloat(formData.ingreso_mensual) : 0,
+      tiempo_laborando: formData.tiempo_laborando ? parseInt(formData.tiempo_laborando) : 0,
+      tipo_credito: formData.tipo_credito,
+      enganche_propuesto: formData.enganche_propuesto ? parseFloat(formData.enganche_propuesto) : 0,
+      plazos_propuestos: formData.plazos_propuestos ? parseInt(formData.plazos_propuestos) : 0,
+      comprobante_ingresos: formData.comprobante_ingresos,
+      descripcion_vehiculo_adicional: formData.descripcion_vehiculo_adicional
+    };
+
+    // Validar plazos
+    if (payload.plazos_propuestos > 60) {
+      alert('El plazo máximo es de 60 meses');
+      return;
+    }
     
     try {
       const response = await fetch('https://financiera-backend.vercel.app/api/solicitudes', {
@@ -168,30 +211,7 @@ const SolicitudForm = ({ history, location }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`
         },
-        body: JSON.stringify({
-          idVendedor: formData.idVendedor,
-          idVehiculo: formData.idVehiculo,
-          idCotizacion: formData.idCotizacion,
-          nombre_completo: formData.nombre_completo,
-          telefono: formData.telefono,
-          direccion: formData.direccion,
-          curp: formData.curp,
-          fecha_nacimiento: formData.fecha_nacimiento,
-          estado_civil: formData.estado_civil,
-          cantidad_dependientes: formData.cantidad_dependientes,
-          tipo_vivienda: formData.tipo_vivienda,
-          ingreso_familiar: formData.ingreso_familiar,
-          direccion_trabajo: formData.direccion_trabajo,
-          empresa: formData.empresa,
-          puesto: formData.puesto,
-          ingreso_mensual: formData.ingreso_mensual,
-          tiempo_laborando: formData.tiempo_laborando,
-          tipo_credito: formData.tipo_credito,
-          enganche_propuesto: formData.enganche_propuesto,
-          plazos_propuestos: formData.plazos_propuestos,
-          comprobante_ingresos: formData.comprobante_ingresos,
-          descripcion_vehiculo_adicional: formData.descripcion_vehiculo_adicional
-        })
+        body: JSON.stringify(payload)
       });
 
       const result = await response.json();
