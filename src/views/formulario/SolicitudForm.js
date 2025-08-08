@@ -14,6 +14,11 @@ const SolicitudForm = ({ history, location }) => {
   const [vehiculoInfo, setVehiculoInfo] = useState(null);
   const [clienteInfo, setClienteInfo] = useState(null);
   const [error, setError] = useState(null);
+  const [userProfileData, setUserProfileData] = useState({
+    nombre: '',
+    telefono: '',
+    direccion: ''
+  });
 
   const [dataModified, setDataModified] = useState({
     enganche: false,
@@ -50,11 +55,67 @@ const SolicitudForm = ({ history, location }) => {
 
   const [currentSection, setCurrentSection] = useState('vehiculo');
 
+  // Función para obtener los datos del perfil del usuario
+  const fetchUserProfile = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      if (!token || !idCliente) return;
+
+      const response = await fetch(`https://financiera-backend.vercel.app/api/usuarios/${idCliente}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al obtener datos del perfil');
+      }
+
+      const data = await response.json();
+      if (data.success && data.data) {
+        const profileData = {
+          nombre: data.data.nombre || '',
+          telefono: data.data.telefono || '',
+          direccion: data.data.direccion || ''
+        };
+        setUserProfileData(profileData);
+        
+        // Actualizar el formulario con los datos del perfil
+        setFormData(prev => ({
+          ...prev,
+          nombre_completo: profileData.nombre,
+          telefono: profileData.telefono,
+          direccion: profileData.direccion
+        }));
+      }
+    } catch (err) {
+      console.error('Error al obtener datos del perfil:', err);
+      // Si falla, intentamos obtener los datos del localStorage
+      const storedUser = JSON.parse(localStorage.getItem('user')) || {};
+      const profileData = {
+        nombre: storedUser.nombre || '',
+        telefono: storedUser.telefono || '',
+        direccion: storedUser.direccion || ''
+      };
+      setUserProfileData(profileData);
+      setFormData(prev => ({
+        ...prev,
+        nombre_completo: profileData.nombre,
+        telefono: profileData.telefono,
+        direccion: profileData.direccion
+      }));
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         if (!cotizacionData.idVehiculo) return;
         
+        // Primero obtenemos los datos del perfil
+        await fetchUserProfile();
+
+        // Luego obtenemos los demás datos
         const clienteRes = await fetch(`https://financiera-backend.vercel.app/api/usuarios/${idCliente}`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`
@@ -67,13 +128,6 @@ const SolicitudForm = ({ history, location }) => {
         
         const clienteJson = await clienteRes.json();
         setClienteInfo(clienteJson);
-        
-        setFormData(prev => ({
-          ...prev,
-          nombre_completo: clienteJson.nombre || '',
-          telefono: clienteJson.telefono ? clienteJson.telefono.toString() : '',
-          direccion: clienteJson.direccion || ''
-        }));
 
         const cotizacionRes = await fetch(`https://financiera-backend.vercel.app/api/cotizaciones`, {
           headers: {
@@ -523,13 +577,13 @@ const SolicitudForm = ({ history, location }) => {
                         required: true,
                         key: 'input'
                       }),
-                      clienteInfo?.nombre && React.createElement(
+                      userProfileData.nombre && React.createElement(
                         'div',
                         { className: 'original-value', key: 'original' },
                         [
-                          React.createElement('span', { key: 'span' }, 'Valor original:'),
+                          React.createElement('span', { key: 'span' }, 'Datos de perfil:'),
                           ' ',
-                          clienteInfo.nombre
+                          userProfileData.nombre
                         ]
                       )
                     ]
@@ -552,13 +606,13 @@ const SolicitudForm = ({ history, location }) => {
                             required: true,
                             key: 'input'
                           }),
-                          clienteInfo?.telefono && React.createElement(
+                          userProfileData.telefono && React.createElement(
                             'div',
                             { className: 'original-value', key: 'original' },
                             [
-                              React.createElement('span', { key: 'span' }, 'Valor original:'),
+                              React.createElement('span', { key: 'span' }, 'Datos de perfil:'),
                               ' ',
-                              clienteInfo.telefono
+                              userProfileData.telefono
                             ]
                           )
                         ]
@@ -601,13 +655,13 @@ const SolicitudForm = ({ history, location }) => {
                         required: true,
                         key: 'input'
                       }),
-                      clienteInfo?.direccion && React.createElement(
+                      userProfileData.direccion && React.createElement(
                         'div',
                         { className: 'original-value', key: 'original' },
                         [
-                          React.createElement('span', { key: 'span' }, 'Valor original:'),
+                          React.createElement('span', { key: 'span' }, 'Datos de perfil:'),
                           ' ',
-                          clienteInfo.direccion
+                          userProfileData.direccion
                         ]
                       )
                     ]
